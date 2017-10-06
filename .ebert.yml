@@ -1,0 +1,8 @@
+engines:
+  pep8:
+    enabled: true
+  gnu-complexity:
+    enabled: true
+subapps:
+ name: 'Source'
+ path: 'src'
