@@ -1,14 +1,16 @@
-# ECE411
+# Pluse Width Massacre
 
-Fall 2017
-Practicum Project
+Lazer tag
 
 ## Team
 
-Julian
-Zed
-Max
-John
+- Max (lead)
+- Julian
+- Zed
+- John
+
+> Fall 2017
+> Practicum Project
 
 ## Description
 
