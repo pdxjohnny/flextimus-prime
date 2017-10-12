@@ -1,4 +1,4 @@
-# Pluse Width Massacre
+# Pulse Width Massacre
 
 Lazer tag
 
@@ -6,7 +6,7 @@ Lazer tag
 
 - Max (lead)
 - Julian
-- Zed
+- Fouric
 - John
 - Nathan
 
