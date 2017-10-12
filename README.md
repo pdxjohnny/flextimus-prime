@@ -8,6 +8,7 @@ Lazer tag
 - Julian
 - Zed
 - John
+- Nathan
 
 > Fall 2017
 > Practicum Project
