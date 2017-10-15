@@ -12,12 +12,12 @@ How to get set up hacking on this project.
 
 ## Forking and cloning this repo
 
-[Fork](https://github.com/pdxjohnny/ECE411#fork-destination-box) this
+[Fork](https://github.com/pdxjohnny/pulse-width-massacre#fork-destination-box) this
 repo.
 
 ```console
 USERNAME=your_github_username
-REPO=ECE411
+REPO=pulse-width-massacre
 git clone git@github.com:$USERNAME/$REPO
 cd $REPO
 git remote add upstream git@github.com:pdxjohnny/$REPO
@@ -30,9 +30,13 @@ git remote add upstream git@github.com:pdxjohnny/$REPO
 git checkout master
 git pull upstream master
 # Now master is up to date. Star new brnaches off the up to date
-# master with `git checkout -b new_branch_name`
+# master with
+git checkout -b new_branch_name
 ```
 
 ## Making changes with git and GitHib hub
 
 [![asciicast](https://asciinema.org/a/141147.png)](https://asciinema.org/a/141147)
+
+> We've changed the name to pulse-width-massacre
+> but ECE411 might still work
