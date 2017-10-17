@@ -1,6 +1,6 @@
-# Pulse Width Massacre
+# Flex Sensor
 
-Lazer tag
+Something posture
 
 ## Team
 
