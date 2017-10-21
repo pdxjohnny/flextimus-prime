@@ -12,12 +12,12 @@ How to get set up hacking on this project.
 
 ## Forking and cloning this repo
 
-[Fork](https://github.com/pdxjohnny/pulse-width-massacre#fork-destination-box) this
+[Fork](https://github.com/pdxjohnny/helios#fork-destination-box) this
 repo.
 
 ```console
 USERNAME=your_github_username
-REPO=pulse-width-massacre
+REPO=helios
 git clone git@github.com:$USERNAME/$REPO
 cd $REPO
 git remote add upstream git@github.com:pdxjohnny/$REPO
@@ -38,5 +38,5 @@ git checkout -b new_branch_name
 
 [![asciicast](https://asciinema.org/a/141147.png)](https://asciinema.org/a/141147)
 
-> We've changed the name to pulse-width-massacre
+> We've changed the name to helios
 > but ECE411 might still work

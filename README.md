@@ -1,6 +1,8 @@
-# Pulse Width Massacre
+# Helios
 
-Lazer tag
+The greatest wonder of the posture sensing world.
+
+![Colossus of Rhodes has good posture](https://upload.wikimedia.org/wikipedia/commons/5/5f/Colosse_de_Rhodes_%28Barclay%29.jpg)
 
 ## Team
 
