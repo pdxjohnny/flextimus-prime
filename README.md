@@ -1,4 +1,4 @@
-# Pulse Width Massacre
+# Flextimus Prime
 
 Lazer tag
 
