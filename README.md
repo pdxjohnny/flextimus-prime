@@ -2,6 +2,10 @@
 
 Posture monitor
 
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/pdxjohnny/flextimus-prime/blob/master/CONTRIBUTING.md)
+
 ## Team
 
 - Max (lead)
