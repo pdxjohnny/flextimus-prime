@@ -1,0 +1,3 @@
+[submodule "src/qemu/stm32"]
+	path = src/qemu/stm32
+	url = https://github.com/beckus/qemu_stm32/
