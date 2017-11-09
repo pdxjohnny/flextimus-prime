@@ -1,0 +1,4 @@
+#ifdef QEMU_STM32
+#define GPIOA_BASE    0x40010800
+#define USART1_BASE   0x40004400
+#endif /* QEMU_STM32 */
