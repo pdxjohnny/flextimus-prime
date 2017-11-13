@@ -1,10 +1,12 @@
 /**
   ******************************************************************************
-  * @file    Project/STM32F0xx_StdPeriph_Templates/main.c 
+  * @file    Project/STM32F0xx_StdPeriph_Templates/stm32f0xx_it.c 
   * @author  MCD Application Team
   * @version V1.5.0
   * @date    05-December-2014
-  * @brief   Main program body
+  * @brief   Main Interrupt Service Routines.
+  *          This file provides template for all exceptions handler and 
+  *          peripherals interrupt service routine.
   ******************************************************************************
   * @attention
   *
@@ -26,9 +28,9 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
-#include "main.h"
+#include "stm32f0xx_it.h"
 
-/** @addtogroup STM32F0xx_StdPeriph_Templates
+/** @addtogroup Template_Project
   * @{
   */
 
@@ -39,64 +41,78 @@
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 
-void delay(int dly) {
-  while (dly--);
-}
+/******************************************************************************/
+/*            Cortex-M0 Processor Exceptions Handlers                         */
+/******************************************************************************/
 
 /**
-  * @brief  Main program.
+  * @brief  This function handles NMI exception.
   * @param  None
   * @retval None
   */
-int main(void)
+void NMI_Handler(void)
 {
-
-  /*!< At this stage the microcontroller clock setting is already configured,
-       this is done through SystemInit() function which is called from startup
-       file (startup_stm32f0xx.s) before to branch to application main.
-       To reconfigure the default setting of SystemInit() function, refer to
-       system_stm32f0xx.c file
-     */
-  /* Add your application code here */
-  // Need to limit ADC clock to below 14MHz so will change ADC prescaler to 4
-  // RCC_CFGR |= BIT14;
-	// Power up PORTB
-  RCC->AHBENR |= RCC_AHBENR_GPIOBEN;
-
-	GPIOB->MODER |= GPIO_MODER_MODER3_0; // make bit3  an output
-	GPIOB->MODER &= ~GPIO_MODER_MODER3_1; // make bit3  an output
-
-	while (1) {
-		GPIOB->ODR |= GPIO_MODER_MODER1_1;
-		delay(500000);
-		GPIOB->ODR &= ~GPIO_MODER_MODER1_1;
-		delay(500000);
-	}
-
-	return 0;
 }
 
 /**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
+  * @brief  This function handles Hard Fault exception.
+  * @param  None
   * @retval None
   */
-void assert_failed(uint8_t* file, uint32_t line)
-{ 
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-
-  /* Infinite loop */
+void HardFault_Handler(void)
+{
+  /* Go to infinite loop when Hard Fault exception occurs */
   while (1)
   {
   }
 }
 
 /**
-  * @}
+  * @brief  This function handles SVCall exception.
+  * @param  None
+  * @retval None
   */
+void SVC_Handler(void)
+{
+}
+
+/**
+  * @brief  This function handles PendSVC exception.
+  * @param  None
+  * @retval None
+  */
+void PendSV_Handler(void)
+{
+}
+
+/**
+  * @brief  This function handles SysTick Handler.
+  * @param  None
+  * @retval None
+  */
+void SysTick_Handler(void)
+{
+}
+
+/******************************************************************************/
+/*                 STM32F0xx Peripherals Interrupt Handlers                   */
+/*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */
+/*  available peripheral interrupt handler's name please refer to the startup */
+/*  file (startup_stm32f0xx.s).                                            */
+/******************************************************************************/
+
+/**
+  * @brief  This function handles PPP interrupt request.
+  * @param  None
+  * @retval None
+  */
+/*void PPP_IRQHandler(void)
+{
+}*/
+
+/**
+  * @}
+  */ 
 
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
