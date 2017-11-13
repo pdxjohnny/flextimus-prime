@@ -12,11 +12,19 @@ AS=arm-none-eabi-as
 # Specity the linker to use
 LD=arm-none-eabi-ld
 
-CCFLAGS=-mcpu=cortex-m0 -mthumb -g -ffreestanding -I ../include
+BOARD=STM32F042
 
+CCFLAGS=-mcpu=cortex-m0 -mthumb -g -D$(BOARD) -I ../include
+CCFLAGS+= -I libs/Libraries/CMSIS/Device/ST/STM32F0xx/Include
+CCFLAGS+= -I libs/Libraries/CMSIS/Include
+CCFLAGS+= -I libs/Libraries/STM32F0xx_StdPeriph_Driver/inc
+
+#$(wildcard libs/Libraries/STM32F0xx_StdPeriph_Driver/src/*.c)
 # List the object files involved in this project
-LIBS=stdio.o uart.o
-OBJS=init.o main.o $(LIBS)
+SRCS=$(wildcard *.c) \
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rtc.c \
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rcc.c
+OBJS=$(SRCS:.c=.o)
 
 all: main.elf
 
@@ -28,7 +36,7 @@ main.elf : $(OBJS)
 	objcopy -O ihex main.elf main.hex
 # The object file main.o depends on main.c.  main.c is compiled to make main.o
 %.o:%.c
-	$(CC) $(CCFLAGS) $< -c
+	$(CC) $(CCFLAGS) -o $@ -c $<
 
 # if someone types in 'make clean' then remove all object files and executables
 # associated wit this project
