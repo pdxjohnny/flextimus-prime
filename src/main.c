@@ -71,10 +71,9 @@ int main(void)
 	while (1) {
 		GPIOB->ODR |= GPIO_MODER_MODER1_1;
 		delay(500000);
-    /* TODO Fix adc_conversion, currently this returns a timeout error */
     adc_status = adc_convert(ADC_CONVERT_PA1);
     if (ADC_ERROR(adc_status)) {
-      // assert_failed(__FILE__, __LINE__);
+      assert_failed(__FILE__, __LINE__);
     }
     temp = adc_status.data;
 		GPIOB->ODR &= ~GPIO_MODER_MODER1_1;

@@ -39,8 +39,9 @@ adc_status_t adc_success(adc_status_data_t data) {
 }
 
 /* Poll bit with timeout. If we are in an interrupt we only poll once. */
-adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
-	for (unsigned int i = 0; (reg & wait_bits) != wait_bits; i++) {
+adc_status_t adc_wait(__IO uint32_t *reg, uint32_t and_with,
+    uint32_t what_it_should_be) {
+	for (unsigned int i = 0; (*reg & and_with) != what_it_should_be; i++) {
     /* If we are in an interrupt and have checked once already then we need to
      * exit with a timeout to allow other interrupts to be serviced as quickly
      * as possible. */
@@ -53,6 +54,24 @@ adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
       return ADC_TIMEOUT;
     }
 	}
+  return ADC_OK;
+}
+
+/* Turns on the HSI14 RC oscillartor if it is not already ready. */
+static adc_status_t adc_start_hsi14() {
+  adc_status_t status;
+  /* This code turns on and selects the HSI14 as clock source. */
+  if ((RCC->CR2 & RCC_CR2_HSI14RDY) == 0) {
+    /* (1) Enable the peripheral clock of the ADC */
+    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
+    /* (2) Start HSI14 RC oscillator */
+    RCC->CR2 |= RCC_CR2_HSI14ON;
+    /* (3) Wait HSI14 is ready */
+    status = adc_wait(&RCC->CR2, RCC_CR2_HSI14RDY, RCC_CR2_HSI14RDY);
+    if (ADC_ERROR(status)) {
+      return status;
+    }
+  }
   return ADC_OK;
 }
 
@@ -113,7 +132,7 @@ adc_status_t adc_calibration() {
 		/* (2) Clear ADEN by setting ADDIS */
 		ADC1->CR |= ADC_CR_ADDIS;
 	}
-	status = adc_wait(ADC1->CR, ADC_CR_ADEN);
+	status = adc_wait(&ADC1->CR, ADC_CR_ADEN, 0);
   if (ADC_ERROR(status)) {
     return status;
   }
@@ -122,7 +141,7 @@ adc_status_t adc_calibration() {
 	/* (4) Launch the calibration by setting ADCAL */
 	ADC1->CR |= ADC_CR_ADCAL;
 	/* (5) Wait until ADCAL=0 */
-	status = adc_wait(ADC1->CR, ADC_CR_ADCAL);
+	status = adc_wait(&ADC1->CR, ADC_CR_ADCAL, 0);
   if (ADC_ERROR(status)) {
     return status;
   }
@@ -165,7 +184,7 @@ adc_status_t adc_enable() {
 	/* (3) Enable the ADC */
 	ADC1->CR |= ADC_CR_ADEN;
 	/* (4) Wait until ADC ready */
-	status = adc_wait(ADC1->ISR, ADC_ISR_ADRDY);
+	status = adc_wait(&ADC1->ISR, ADC_ISR_ADRDY, ADC_ISR_ADRDY);
   if (ADC_ERROR(status)) {
     return status;
   }
@@ -194,7 +213,7 @@ adc_status_t adc_watch_enable(adc_convert_t pin_to_convert,
 adc_status_t adc_read() {
   adc_status_t status;
   /* Wait end of conversion */
-	status = adc_wait(ADC1->ISR, ADC_ISR_EOC);
+	status = adc_wait(&ADC1->ISR, ADC_ISR_EOC, ADC_ISR_EOC);
   if (ADC_ERROR(status)) {
     return status;
   }
@@ -247,6 +266,8 @@ adc_status_t adc_convert(adc_convert_t pin_to_convert) {
   if (ADC_ERROR(status)) {
     return status;
   }
+  /* Ensure HSI14 is powered and ready */
+  adc_start_hsi14();
   /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
   ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
   /* (2) Select channel for desired pin */
@@ -310,6 +331,8 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
    *  MHz RC oscillator cannot be turned on by ADC interface when the APB clock
    *  is selected as an ADC kernel clock.
    */
+  /* Ensure HSI14 is powered and ready */
+  adc_start_hsi14();
   ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
   /* (2) Select only software trigger (EXTEN_0), auto off, and wait mode.
    * 13.7.2 Auto-off mode (AUTOFF):
@@ -342,9 +365,25 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
 }
 
 adc_status_t adc_up() {
+  ADC_InitTypeDef adc_cfg;
+  GPIO_InitTypeDef gpio_cfg;
+
+  ADC_StructInit(&adc_cfg);
+  GPIO_StructInit(&gpio_cfg);
+
   adc_conversion_complete = NULL;
-  adc_calibration();
-  adc_enable();
+
+  /* Start the clocks */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+  /* TODO Are these GPIO settings correct? */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+
+  GPIO_Init(GPIOA, &gpio_cfg);
+  ADC_Init(ADC1, &adc_cfg);
+
+  /* TODO Replace this channel with the correct one */
+  ADC_ChannelConfig(ADC1, ADC_Channel_0, 0);
+
   // TODO perhaps use the adc_watch_enable function
   return ADC_OK;
 }
@@ -355,14 +394,14 @@ adc_status_t adc_down() {
 	/* (1) Stop any ongoing conversion */
 	ADC1->CR |= ADC_CR_ADSTP;
 	/* (2) Wait until ADSTP is reset by hardware i.e. conversion is stopped */
-	status = adc_wait(ADC1->CR, ADC_CR_ADSTP);
+	status = adc_wait(&ADC1->CR, ADC_CR_ADSTP, 0);
   if (ADC_ERROR(status)) {
     return status;
   }
 	/* (3) Disable the ADC */
 	ADC1->CR |= ADC_CR_ADDIS;
 	/* (4) Wait until the ADC is fully disabled */
-	status = adc_wait(ADC1->CR, ADC_CR_ADEN);
+	status = adc_wait(&ADC1->CR, ADC_CR_ADEN, 0);
   if (ADC_ERROR(status)) {
     return status;
   }
