@@ -61,6 +61,8 @@
    Standard Peripheral Library drivers code */
 #define USE_FULL_ASSERT    1
 
+#define ADC_CR_ADRDY        (1 << 0)
+
 #endif /* __STM32F0XX_CONF_H */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

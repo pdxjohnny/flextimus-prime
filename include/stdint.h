@@ -1,6 +1,8 @@
 #ifndef _STDINT_H
 #define _STDINT_H
 
+#define NULL      0
+
 typedef char int8_t;
 typedef unsigned char uint8_t;
 typedef short int16_t;
