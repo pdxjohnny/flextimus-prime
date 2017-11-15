@@ -7,6 +7,8 @@ typedef enum {
   ADC_STATUS_OK,
   ADC_STATUS_TIMEOUT,
   ADC_STATUS_INVALID_CONVERT_PIN,
+  ADC_STATUS_CONVERSION_IN_PROGRESS,
+  ADC_STATUS_NEED_CONVERSION_CALLBACK,
 } adc_status_code;
 
 typedef uint32_t adc_status_data_t;
@@ -20,6 +22,8 @@ typedef struct {
 extern adc_status_t ADC_OK;
 extern adc_status_t ADC_TIMEOUT;
 extern adc_status_t ADC_INVALID_CONVERT_PIN;
+extern adc_status_t ADC_CONVERSION_IN_PROGRESS;
+extern adc_status_t ADC_NEED_CONVERSION_CALLBACK;
 
 typedef enum {
   ADC_CONVERT_PIN_1,

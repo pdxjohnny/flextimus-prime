@@ -1,7 +1,8 @@
 #include <adc.h>
 #include "main.h"
 
-bool adc_within_interrupt;
+static bool adc_within_interrupt;
+static bool adc_converting;
 
 /* Staticly allocated statuses go here. */
 adc_status_t ADC_OK = {
@@ -14,6 +15,14 @@ adc_status_t ADC_TIMEOUT = {
 };
 adc_status_t ADC_INVALID_CONVERT_PIN = {
   .code = ADC_STATUS_INVALID_CONVERT_PIN,
+  .data = 0,
+};
+adc_status_t ADC_CONVERSION_IN_PROGRESS = {
+  .code = ADC_STATUS_CONVERSION_IN_PROGRESS,
+  .data = 0,
+};
+adc_status_t ADC_NEED_CONVERSION_CALLBACK = {
+  .code = ADC_STATUS_NEED_CONVERSION_CALLBACK,
   .data = 0,
 };
 
@@ -38,7 +47,7 @@ adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
     if (adc_within_interrupt == true && i > 1) {
       return ADC_TIMEOUT;
     }
-		/* TODO For robust implementation, add time-out management here. Or perhaps
+    /* TODO For robust implementation, add time-out management here. Or perhaps
      * relinquish execution with a call to a thread scheduler. */
 	}
   return ADC_OK;
@@ -190,6 +199,18 @@ adc_status_t adc_read() {
   return adc_success(ADC1->DR);
 }
 
+/* Tell the other functions through the global variable `adc_converting` that we
+ * have started a conversion. If `adc_converting` is already true then we return
+ * an error saying the ADC is already converting.
+ */
+static adc_status_t adc_start_converting() {
+  if (adc_converting == true) {
+    return ADC_CONVERSION_IN_PROGRESS;
+  }
+  adc_converting = true;
+  return ADC_OK;
+}
+
 /* 13.4.7 Single conversion mode (CONT=0)
  *
  * In Single conversion mode, the ADC performs a single sequence of conversions,
@@ -218,8 +239,13 @@ adc_status_t adc_read() {
  */
 adc_status_t adc_convert(adc_convert_t pin_to_convert) {
   adc_status_t status;
+  /* Start converting if we are not already converting */
+  status = adc_start_converting();
+  if (ADC_ERROR(status)) {
+    return status;
+  }
   /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
-  // ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
+  ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
   /* (2) Select channel for desired pin */
   status = adc_select_conversion_pin(pin_to_convert);
   if (ADC_ERROR(status)) {
@@ -235,7 +261,9 @@ adc_status_t adc_convert(adc_convert_t pin_to_convert) {
   /* Performs the AD conversion. Start the ADC conversion */
   ADC1->CR |= ADC_CR_ADSTART;
   /* Store the ADC conversion result */
-  return adc_read();
+  status = adc_read();
+  adc_converting = false;
+  return status;
 }
 
 /* Interrupt handler for ADC. Called when a conversion is complete.
@@ -247,6 +275,7 @@ void adc_handler() {
     adc_conversion_complete(adc_read());
   }
   adc_within_interrupt = false;
+  adc_converting = false;
 }
 
 /* Ask the ADC to start a conversion and cause an interrupt when it is done.
@@ -254,8 +283,20 @@ void adc_handler() {
  * Source: A.7.13 Auto Off and wait mode sequence code example
  */
 adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
-    adc_status_t (*adc_conversion_complete)(adc_convertion_result result)) {
+    adc_status_t (*set_adc_conversion_complete)(adc_convertion_result result)) {
   adc_status_t status;
+  /* Make sure that we have a conversion callback */
+  if (set_adc_conversion_complete == NULL) {
+    return ADC_NEED_CONVERSION_CALLBACK;
+  }
+  adc_conversion_complete = set_adc_conversion_complete;
+  /* Start converting if we are not already converting */
+  status = adc_start_converting();
+  if (ADC_ERROR(status)) {
+    return status;
+  }
+  /* TODO Figure out which ADC registers need to be updated when the CPU
+   * wakes up from sleep, or if auto-off mode requires we updated anything. */
   /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
   ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
   /* (2) Select only software trigger (EXTEN_0), auto off, and wait mode.
@@ -281,10 +322,12 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   }
   /* (4) Enable interrupts on EOC, EOSEQ and overrrun */
   ADC1->IER = ADC_IER_EOCIE | ADC_IER_EOSEQIE | ADC_IER_OVRIE;
+  /* TODO Enable interrupts in the NVIC for the ADC */
   return status;
 }
 
 adc_status_t adc_up() {
+  adc_conversion_complete = NULL;
   adc_calibration();
   adc_enable();
   // TODO perhaps use the adc_watch_enable function
