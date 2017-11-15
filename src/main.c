@@ -44,7 +44,6 @@ void delay(int dly) {
   */
 int main(void)
 {
-
   /*!< At this stage the microcontroller clock setting is already configured,
        this is done through SystemInit() function which is called from startup
        file (startup_stm32f0xx.s) before to branch to application main.
@@ -60,12 +59,27 @@ int main(void)
 	GPIOB->MODER |= GPIO_MODER_MODER3_0; // make bit3  an output
 	GPIOB->MODER &= ~GPIO_MODER_MODER3_1; // make bit3  an output
 
+  /* TODO enable interrupts */
+  // enable_interrupts();
+
 	while (1) {
 		GPIOB->ODR |= GPIO_MODER_MODER1_1;
 		delay(500000);
 		GPIOB->ODR &= ~GPIO_MODER_MODER1_1;
 		delay(500000);
 	}
+
+  /* TODO go to sleep
+   *
+   * Calls the ARM `WFI` instruction.
+   *
+   * WFI (Wait For Interrupt) makes the processor suspend execution (Clock is
+   * stopped) until one of the following events take place:
+   * - An IRQ interrupt
+   * - An FIQ interrupt
+   * - A Debug Entry request made to the processor.
+   */
+  // cpu_sleep();
 
 	return 0;
 }
@@ -77,8 +91,7 @@ int main(void)
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t* file, uint32_t line)
-{ 
+void assert_failed(uint8_t* file, uint32_t line) {
   /* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
 

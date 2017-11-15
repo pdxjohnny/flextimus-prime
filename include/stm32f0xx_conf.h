@@ -30,6 +30,8 @@
 #define __STM32F0XX_CONF_H
 
 /* Includes ------------------------------------------------------------------*/
+#include <bits.h>
+
 /* Comment the line below to disable peripheral header file inclusion */
 #include "stm32f0xx_adc.h"
 #include "stm32f0xx_can.h"
@@ -61,7 +63,7 @@
    Standard Peripheral Library drivers code */
 #define USE_FULL_ASSERT    1
 
-#define ADC_CR_ADRDY        (1 << 0)
+#define ADC_CR_ADRDY        BIT0
 
 #endif /* __STM32F0XX_CONF_H */
 

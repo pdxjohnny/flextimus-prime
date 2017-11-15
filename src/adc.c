@@ -1,7 +1,66 @@
 #include <adc.h>
 #include "main.h"
 
-int (*adc_conversion_complete)(int result);
+bool adc_within_interrupt;
+
+/* Staticly allocated statuses go here. */
+adc_status_t ADC_OK = {
+  .code = ADC_STATUS_OK,
+  .data = 0,
+};
+adc_status_t ADC_TIMEOUT = {
+  .code = ADC_STATUS_TIMEOUT,
+  .data = 0,
+};
+adc_status_t ADC_INVALID_CONVERT_PIN = {
+  .code = ADC_STATUS_INVALID_CONVERT_PIN,
+  .data = 0,
+};
+
+/* Callback function for when the ADC End Of Conversion interrupt is triggered.
+ * This is caused by a called to adc_convert_async
+ */
+adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
+
+/* Create and returns a adc_status_t which has a code of ADC_STATUS_OK with the
+ * data specified as an argument. */
+adc_status_t adc_success(adc_status_data_t data) {
+  adc_status_t status = {.code = ADC_STATUS_OK, .data = data};
+  return status;
+}
+
+/* Poll bit with timeout. If we are in an interrupt we only poll once. */
+adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
+	for (unsigned int i = 0; (reg & wait_bits) != 0; i++) {
+    /* If we are in an interrupt and have checked once already then we need to
+     * exit with a timeout to allow other interrupts to be serviced as quickly
+     * as possible. */
+    if (adc_within_interrupt == true && i > 1) {
+      return ADC_TIMEOUT;
+    }
+		/* TODO For robust implementation, add time-out management here. Or perhaps
+     * relinquish execution with a call to a thread scheduler. */
+	}
+  return ADC_OK;
+}
+
+/* Chooses which pin on the STM32F042 we want to convert from using the ADC.
+ * Returns
+ *  ADC_OK
+ *    Valid pin has been selected for conversion
+ *  ADC_INVALID_CONVERT_PIN
+ *    Caller passed in an invalid pin
+ */
+adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert) {
+  switch (pin_to_convert) {
+    case ADC_CONVERT_PIN_1:
+      ADC1->CFGR1 |= ADC_CFGR1_EXTSEL_2;
+      return ADC_OK;
+    default:
+      break;
+  }
+  return ADC_INVALID_CONVERT_PIN;
+}
 
 /* 13.4.1 Calibration (ADCAL)
  *
@@ -35,23 +94,26 @@ int (*adc_conversion_complete)(int result);
  *
  * Source: A.7.1 ADC Calibration code example
  */
-int adc_calibration() {
+adc_status_t adc_calibration() {
+  adc_status_t status;
 	/* (1) Ensure that ADEN = 0 */
 	if ((ADC1->CR & ADC_CR_ADEN) != 0) {
 		/* (2) Clear ADEN by setting ADDIS */
 		ADC1->CR |= ADC_CR_ADDIS;
 	}
-	while ((ADC1->CR & ADC_CR_ADEN) != 0) {
-		/* For robust implementation, add here time-out management */
-	}
+	status = adc_wait(ADC1->CR, ADC_CR_ADEN);
+  if (ADC_ERROR(status)) {
+    return status;
+  }
 	/* (3) Clear DMAEN */
 	ADC1->CFGR1 &= ~ADC_CFGR1_DMAEN;
 	/* (4) Launch the calibration by setting ADCAL */
 	ADC1->CR |= ADC_CR_ADCAL;
 	/* (5) Wait until ADCAL=0 */
-	while ((ADC1->CR & ADC_CR_ADCAL) != 0) {
-		/* For robust implementation, add here time-out management */
-	}
+	status = adc_wait(ADC1->CR, ADC_CR_ADCAL);
+  if (ADC_ERROR(status)) {
+    return status;
+  }
 }
 
 /* 13.4.2 ADC on-off control (ADEN, ADDIS, ADRDY)
@@ -81,7 +143,8 @@ int adc_calibration() {
  *
  * Source: A.7.2 ADC enable sequence code example
  */
-int adc_enable() {
+adc_status_t adc_enable() {
+  adc_status_t status;
 	/* (1) Ensure that ADRDY = 0 */
 	if ((ADC1->ISR & ADC_ISR_ADRDY) != 0)  {
 		/* (2) Clear ADRDY */
@@ -90,24 +153,25 @@ int adc_enable() {
 	/* (3) Enable the ADC */
 	ADC1->CR |= ADC_CR_ADEN;
 	/* (4) Wait until ADC ready */
-	while ((ADC1->ISR & ADC_ISR_ADRDY) == 0) {
-		/* For robust implementation, add here time-out management */
-	}
+	status = adc_wait(ADC1->ISR, ADC_ISR_ADRDY);
+  if (ADC_ERROR(status)) {
+    return status;
+  }
 }
-
 
 /* Interrupt when then voltage on the ADC pin exits a sepcified range.
  *
  * Source: A.7.14 Analog watchdog code example
  */
-int adc_watch_enable(uint16_t vrefint_low, uint16_t vrefint_high) {
+adc_status_t adc_watch_enable(adc_convert_t pin_to_convert,
+    uint16_t vrefint_low, uint16_t vrefint_high) {
   /* (1) Select the continuous mode and configure the Analog watchdog to monitor
    * only CH17 */
-  ADC1->CFGR1 |= ADC_CFGR1_CONT | (17 << 26) | ADC_CFGR1_AWDEN |
-    ADC_CFGR1_AWDSGL;
+  ADC1->CFGR1 |= ADC_CFGR1_CONT | ADC_CFGR1_AWDEN | ADC_CFGR1_AWDSGL;
   /* (2) Define analog watchdog range : 16b-MSW is the high limit and 16b-LSW is
    * the low limit */
-  ADC1->TR = (vrefint_high << 16) + vrefint_low;
+  ADC1->TR = (uint32_t)((uint32_t)vrefint_high << (uint32_t)16) &
+    (uint32_t)vrefint_low;
   /* (3) Enable interrupt on Analog Watchdog */
   ADC1->IER = ADC_IER_AWDIE;
 }
@@ -115,13 +179,15 @@ int adc_watch_enable(uint16_t vrefint_low, uint16_t vrefint_high) {
 /* Waits for the conversion to complete by polling the ISR to see if the End Of
  * Conversion (EOC) bit is set.
  */
-int adc_read() {
+adc_status_t adc_read() {
+  adc_status_t status;
   /* Wait end of conversion */
-  while ((ADC1->ISR & ADC_ISR_EOC) == 0) {
-    /* For robust implementation, add here time-out management */
+	status = adc_wait(ADC1->ISR, ADC_ISR_EOC);
+  if (ADC_ERROR(status)) {
+    return status;
   }
   /* Store the ADC conversion result */
-  return ADC1->DR;
+  return adc_success(ADC1->DR);
 }
 
 /* 13.4.7 Single conversion mode (CONT=0)
@@ -150,16 +216,20 @@ int adc_read() {
  *
  * Source: A.7.5 Single conversion sequence code example - Software trigger
  */
-int adc_convert() {
+adc_status_t adc_convert(adc_convert_t pin_to_convert) {
+  adc_status_t status;
   /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
   // ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
-  /* (2) Select CHSEL0, CHSEL9, CHSEL10 andCHSEL17 for VRefInt */
-  ADC1->CHSELR = ADC_CHSELR_CHSEL0 | ADC_CHSELR_CHSEL9
-   | ADC_CHSELR_CHSEL10 | ADC_CHSELR_CHSEL17;
+  /* (2) Select channel for desired pin */
+  status = adc_select_conversion_pin(pin_to_convert);
+  if (ADC_ERROR(status)) {
+    return status;
+  }
   /* (3) Select a sampling mode of 111 i.e. 239.5 ADC clk to be greater
    * than 17.1us */
   ADC1->SMPR |= ADC_SMPR_SMP_0 | ADC_SMPR_SMP_1 | ADC_SMPR_SMP_2;
-  /* TODO Find out if this is really needed */
+  /* TODO Find out if we need to set the VREFEN bit in the common configuration
+   * register. */
   /* (4) Wake-up the VREFINT (only for VBAT, Temp sensor and VRefInt) */
   ADC->CCR |= ADC_CCR_VREFEN;
   /* Performs the AD conversion. Start the ADC conversion */
@@ -171,53 +241,72 @@ int adc_convert() {
 /* Interrupt handler for ADC. Called when a conversion is complete.
  */
 void adc_handler() {
+  adc_within_interrupt = true;
+  /* Only call the callback function if it points somewhere valid */
   if (adc_conversion_complete != NULL) {
+    adc_conversion_complete(adc_read());
   }
+  adc_within_interrupt = false;
 }
 
 /* Ask the ADC to start a conversion and cause an interrupt when it is done.
  *
  * Source: A.7.13 Auto Off and wait mode sequence code example
  */
-void adc_convert_async(adc_convert_t pin_to_convert) {
+adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
+    adc_status_t (*adc_conversion_complete)(adc_convertion_result result)) {
+  adc_status_t status;
   /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
   ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
-  /* (2) Select the external trigger on TIM15_TRGO and falling edge,
-   * the continuous mode, scanning direction and auto off */
-  ADC1->CFGR1 |= ADC_CFGR1_EXTEN_0 | ADC_CFGR1_AUTOFF | ADC_CFGR1_OVRMOD;
-  switch (pin_to_convert) {
-    case ADC_CONVERT_PIN_1:
-      ADC1->CFGR1 |= ADC_CFGR1_EXTSEL_2;
-    default:
-      // ADC needs a valid pin to convert
-      assert_param(0);
+  /* (2) Select only software trigger (EXTEN_0), auto off, and wait mode.
+   * 13.7.2 Auto-off mode (AUTOFF):
+   *  When AUTOFF=1, the ADC is always powered off when not converting and
+   *  automatically wakes-up when a conversion is started (by software or
+   *  hardware trigger). A startup-time is automatically inserted between the
+   *  trigger event which starts the conversion and the sampling time of the
+   *  ADC. The ADC is then automatically disabled once the sequence of
+   *  conversions is complete.
+   * 13.7.1 Wait mode conversion
+   *  When the WAIT bit is set to 1 in the ADC_CFGR1 register, a new conversion
+   *  can start only if the previous data has been treated, once the ADC_DR
+   *  register has been read or if the EOC bit has been cleared. This is a way
+   *  to automatically adapt the speed of the ADC to the speed of the system
+   *  that reads the data.
+   */
+  ADC1->CFGR1 |= ADC_CFGR1_EXTEN_0 | ADC_CFGR1_AUTOFF | ADC_CFGR1_WAIT;
+  /* (3) Select channel for desired pin */
+  status = adc_select_conversion_pin(pin_to_convert);
+  if (ADC_ERROR(status)) {
+    return status;
   }
-  /* (3) Select CHSEL1, CHSEL9, CHSEL10 and CHSEL17 */
-  ADC1->CHSELR = ADC_CHSELR_CHSEL1 | ADC_CHSELR_CHSEL2
-    | ADC_CHSELR_CHSEL3 | ADC_CHSELR_CHSEL4;
   /* (4) Enable interrupts on EOC, EOSEQ and overrrun */
   ADC1->IER = ADC_IER_EOCIE | ADC_IER_EOSEQIE | ADC_IER_OVRIE;
+  return status;
 }
 
-int adc_up() {
+adc_status_t adc_up() {
   adc_calibration();
   adc_enable();
-
   // TODO perhaps use the adc_watch_enable function
+  return ADC_OK;
 }
 
-int adc_down() {
+adc_status_t adc_down() {
+  adc_status_t status;
 	/* A.7.3 ADC disable sequence code example */
 	/* (1) Stop any ongoing conversion */
 	ADC1->CR |= ADC_CR_ADSTP;
 	/* (2) Wait until ADSTP is reset by hardware i.e. conversion is stopped */
-	while ((ADC1->CR & ADC_CR_ADSTP) != 0) {
-		/* For robust implementation, add here time-out management */
-	}
+	status = adc_wait(ADC1->CR, ADC_CR_ADSTP);
+  if (ADC_ERROR(status)) {
+    return status;
+  }
 	/* (3) Disable the ADC */
 	ADC1->CR |= ADC_CR_ADDIS;
 	/* (4) Wait until the ADC is fully disabled */
-	while ((ADC1->CR & ADC_CR_ADEN) != 0) {
-		/* For robust implementation, add here time-out management */
-	}
+	status = adc_wait(ADC1->CR, ADC_CR_ADEN);
+  if (ADC_ERROR(status)) {
+    return status;
+  }
+  return ADC_OK;
 }
