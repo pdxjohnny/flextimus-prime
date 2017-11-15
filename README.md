@@ -2,6 +2,16 @@
 
 Posture monitor
 
+## Getting Started
+
+### Dependencies
+
+1. [mbed](https://os.mbed.com/docs/v5.6/tools/setup.html)
+
+## Contributing
+
+See [CONTRIBUTING.md](https://github.com/pdxjohnny/flextimus-prime/blob/master/CONTRIBUTING.md)
+
 ## Team
 
 - Max (lead)

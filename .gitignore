@@ -1,2 +1,4 @@
 # EagleCAD...autosave files?
 *.s\#*
+*.venv
+tags
