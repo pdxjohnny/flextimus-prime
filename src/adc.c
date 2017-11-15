@@ -40,7 +40,7 @@ adc_status_t adc_success(adc_status_data_t data) {
 
 /* Poll bit with timeout. If we are in an interrupt we only poll once. */
 adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
-	for (unsigned int i = 0; (reg & wait_bits) != 0; i++) {
+	for (unsigned int i = 0; (reg & wait_bits) != wait_bits; i++) {
     /* If we are in an interrupt and have checked once already then we need to
      * exit with a timeout to allow other interrupts to be serviced as quickly
      * as possible. */
@@ -49,6 +49,9 @@ adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
     }
     /* TODO For robust implementation, add time-out management here. Or perhaps
      * relinquish execution with a call to a thread scheduler. */
+    if (i > 100000) {
+      return ADC_TIMEOUT;
+    }
 	}
   return ADC_OK;
 }
@@ -62,8 +65,8 @@ adc_status_t adc_wait(uint32_t reg, uint32_t wait_bits) {
  */
 adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert) {
   switch (pin_to_convert) {
-    case ADC_CONVERT_PIN_1:
-      ADC1->CFGR1 |= ADC_CFGR1_EXTSEL_2;
+    case ADC_CONVERT_PA1:
+      ADC1->CHSELR |= ADC_CHSELR_CHSEL1;
       return ADC_OK;
     default:
       break;
@@ -295,9 +298,18 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   if (ADC_ERROR(status)) {
     return status;
   }
-  /* TODO Figure out which ADC registers need to be updated when the CPU
-   * wakes up from sleep, or if auto-off mode requires we updated anything. */
-  /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
+  /* (1) Select HSI14 by writing 00 in CKMODE (reset value)
+   *
+   * 6.2.9 ADC clock
+   *  The ADC clock selection is done inside the ADC_CFGR2 (refer to Section
+   *  13.12.5: ADC configuration register 2 (ADC_CFGR2) on page 263). It can be
+   *  either the dedicated 14 MHz RC oscillator (HSI14) connected on the ADC
+   *  asynchronous clock input or PCLK divided by 2 or 4. The 14 MHz RC
+   *  oscillator can be configured by software either to be turned on/off
+   *  ("uto-off mode") by the ADC interface or to be always enabled. The HSI 14
+   *  MHz RC oscillator cannot be turned on by ADC interface when the APB clock
+   *  is selected as an ADC kernel clock.
+   */
   ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
   /* (2) Select only software trigger (EXTEN_0), auto off, and wait mode.
    * 13.7.2 Auto-off mode (AUTOFF):
@@ -320,9 +332,12 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   if (ADC_ERROR(status)) {
     return status;
   }
-  /* (4) Enable interrupts on EOC, EOSEQ and overrrun */
-  ADC1->IER = ADC_IER_EOCIE | ADC_IER_EOSEQIE | ADC_IER_OVRIE;
-  /* TODO Enable interrupts in the NVIC for the ADC */
+  /* (4) Enable interrupts on EOC (End Of Conversion) */
+  ADC1->IER = ADC_IER_EOCIE;
+  /* (1) Enable Interrupt on ADC in NVIC */
+  NVIC_EnableIRQ(ADC1_COMP_IRQn);
+  /* (2) Set priority for ADC in NVIC */
+  NVIC_SetPriority(ADC1_COMP_IRQn, 0);
   return status;
 }
 

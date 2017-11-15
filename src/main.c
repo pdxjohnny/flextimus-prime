@@ -26,12 +26,12 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <adc.h>
 #include "main.h"
 
 /** @addtogroup STM32F0xx_StdPeriph_Templates
   * @{
   */
-
 
 void delay(int dly) {
   while (dly--);
@@ -50,6 +50,8 @@ int main(void)
        To reconfigure the default setting of SystemInit() function, refer to
        system_stm32f0xx.c file
      */
+  uint32_t temp;
+  adc_status_t adc_status;
   /* Add your application code here */
   // Need to limit ADC clock to below 14MHz so will change ADC prescaler to 4
   // RCC_CFGR |= BIT14;
@@ -59,15 +61,29 @@ int main(void)
 	GPIOB->MODER |= GPIO_MODER_MODER3_0; // make bit3  an output
 	GPIOB->MODER &= ~GPIO_MODER_MODER3_1; // make bit3  an output
 
-  /* TODO enable interrupts */
-  // enable_interrupts();
+  adc_status = adc_up();
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
+
+  __enable_irq();
 
 	while (1) {
 		GPIOB->ODR |= GPIO_MODER_MODER1_1;
 		delay(500000);
+    adc_status = adc_convert(ADC_CONVERT_PA1);
+    if (ADC_ERROR(adc_status)) {
+      assert_failed(__FILE__, __LINE__);
+    }
+    temp = adc_status.data;
 		GPIOB->ODR &= ~GPIO_MODER_MODER1_1;
 		delay(500000);
 	}
+
+  adc_status = adc_down();
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
 
   /* TODO go to sleep
    *

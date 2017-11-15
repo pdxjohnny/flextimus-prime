@@ -26,7 +26,7 @@ extern adc_status_t ADC_CONVERSION_IN_PROGRESS;
 extern adc_status_t ADC_NEED_CONVERSION_CALLBACK;
 
 typedef enum {
-  ADC_CONVERT_PIN_1,
+  ADC_CONVERT_PA1,
 } adc_convert_t;
 
 typedef adc_status_t adc_convertion_result;
