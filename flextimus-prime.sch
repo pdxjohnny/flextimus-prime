@@ -7,7 +7,7 @@
 <setting keepoldvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.5" unitdist="inch" unit="inch" style="lines" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.5" unitdist="inch" unit="mil" style="lines" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="mil"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -15792,7 +15792,7 @@ Grant Vesely</text>
 <approved hash="113,1,80.59,3.81,D1,,,,,"/>
 <approved hash="113,1,71.7,1.27,D2,,,,,"/>
 <approved hash="113,1,-14.66,-102.87,D3,,,,,"/>
-<approved hash="113,1,-105.115,-75.8714,JP5,,,,,"/>
+<approved hash="113,1,-105.115,-76.1347,JP5,,,,,"/>
 <approved hash="113,1,-34.0529,47.2161,JP1,,,,,"/>
 <approved hash="113,1,-51.8329,59.9161,JP2,,,,,"/>
 <approved hash="113,1,-8.359,-31.219,FRAME1,,,,,"/>
