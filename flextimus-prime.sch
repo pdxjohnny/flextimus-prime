@@ -7,7 +7,7 @@
 <setting keepoldvectorfont="yes"/>
 <setting verticaltext="up"/>
 </settings>
-<grid distance="0.1" unitdist="inch" unit="inch" style="lines" multiple="1" display="no" altdistance="0.01" altunitdist="inch" altunit="inch"/>
+<grid distance="0.05" unitdist="inch" unit="inch" style="lines" multiple="1" display="yes" altdistance="0.01" altunitdist="inch" altunit="inch"/>
 <layers>
 <layer number="1" name="Top" color="4" fill="1" visible="no" active="no"/>
 <layer number="2" name="Route2" color="1" fill="3" visible="no" active="no"/>
@@ -15094,15 +15094,17 @@ DIN A3, landscape with location and doc. field</description>
 <part name="SUPPLY4" library="SparkFun-PowerSymbols" library_urn="urn:adsk.eagle:library:530" deviceset="3.3V" device=""/>
 <part name="JP3" library="pinhead" library_urn="urn:adsk.eagle:library:325" deviceset="PINHD-1X16" device="" package3d_urn="urn:adsk.eagle:package:22432/2"/>
 <part name="CN2" library="adafruit" library_urn="urn:adsk.eagle:library:420" deviceset="USB" device="MINIB"/>
+<part name="C2" library="rcl" library_urn="urn:adsk.eagle:library:334" deviceset="C-EU" device="C0805" package3d_urn="urn:adsk.eagle:package:23617/2" value="100n"/>
+<part name="GND15" library="SparkFun-PowerSymbols" library_urn="urn:adsk.eagle:library:530" deviceset="GND" device=""/>
 </parts>
 <sheets>
 <sheet>
 <plain>
 <text x="-116.84" y="80.01" size="1.778" layer="97">Derivative schematic based off of http://ebrombaugh.studionebula.com/embedded/stm32f042breakout/stm32f042f_breakout_schematic.pdf</text>
 <wire x1="-135.89" y1="-68.58" x2="-135.89" y2="-116.84" width="0.1524" layer="94"/>
-<wire x1="-135.89" y1="-116.84" x2="27.94" y2="-116.84" width="0.1524" layer="94"/>
-<wire x1="27.94" y1="-116.84" x2="27.94" y2="-68.58" width="0.1524" layer="94"/>
-<wire x1="27.94" y1="-68.58" x2="-135.89" y2="-68.58" width="0.1524" layer="94"/>
+<wire x1="-135.89" y1="-116.84" x2="30.48" y2="-116.84" width="0.1524" layer="94"/>
+<wire x1="30.48" y1="-116.84" x2="30.48" y2="-68.58" width="0.1524" layer="94"/>
+<wire x1="30.48" y1="-68.58" x2="-135.89" y2="-68.58" width="0.1524" layer="94"/>
 <text x="-133.35" y="-72.39" size="1.778" layer="94">Power</text>
 <wire x1="60.96" y1="-16.51" x2="125.73" y2="-16.51" width="0.1524" layer="94"/>
 <wire x1="125.73" y1="-16.51" x2="125.73" y2="-62.23" width="0.1524" layer="94"/>
@@ -15125,10 +15127,10 @@ DIN A3, landscape with location and doc. field</description>
 <wire x1="-73.66" y1="-25.4" x2="-116.84" y2="-25.4" width="0.1524" layer="94"/>
 <wire x1="-116.84" y1="-25.4" x2="-116.84" y2="33.02" width="0.1524" layer="94"/>
 <text x="-78.74" y="31.75" size="1.778" layer="94" rot="R180">User Interface 2 (LCD Screen)</text>
-<wire x1="-60.96" y1="-58.42" x2="-60.96" y2="35.56" width="0.1524" layer="94"/>
+<wire x1="-60.96" y1="-66.04" x2="-60.96" y2="35.56" width="0.1524" layer="94"/>
 <wire x1="-60.96" y1="35.56" x2="43.18" y2="35.56" width="0.1524" layer="94"/>
-<wire x1="43.18" y1="35.56" x2="43.18" y2="-58.42" width="0.1524" layer="94"/>
-<wire x1="43.18" y1="-58.42" x2="-60.96" y2="-58.42" width="0.1524" layer="94"/>
+<wire x1="43.18" y1="35.56" x2="43.18" y2="-66.04" width="0.1524" layer="94"/>
+<wire x1="43.18" y1="-66.04" x2="-60.96" y2="-66.04" width="0.1524" layer="94"/>
 <text x="-39.37" y="34.29" size="1.778" layer="94" rot="R180">Microprocessor</text>
 <text x="88.9" y="-151.13" size="1.778" layer="97">Team 7:
 Max Schweitzer
@@ -15204,9 +15206,11 @@ Grant Vesely</text>
 <instance part="SUPPLY13" gate="G$1" x="113.03" y="-22.86"/>
 <instance part="GND20" gate="1" x="113.03" y="-58.42"/>
 <instance part="GND4" gate="1" x="69.85" y="-40.64"/>
-<instance part="SUPPLY4" gate="G$1" x="-8.89" y="-48.26"/>
+<instance part="SUPPLY4" gate="G$1" x="-7.62" y="-48.26"/>
 <instance part="JP3" gate="A" x="-88.9" y="5.08"/>
 <instance part="CN2" gate="G$1" x="-121.92" y="-91.44"/>
+<instance part="C2" gate="G$1" x="-5.08" y="-53.34"/>
+<instance part="GND15" gate="1" x="-5.08" y="-63.5"/>
 </instances>
 <busses>
 </busses>
@@ -15291,10 +15295,6 @@ Grant Vesely</text>
 <junction x="113.03" y="-22.86"/>
 </segment>
 <segment>
-<pinref part="U1" gate="B" pin="VDDIO2"/>
-<pinref part="SUPPLY4" gate="G$1" pin="3.3V"/>
-</segment>
-<segment>
 <wire x1="-91.44" y1="20.32" x2="-99.06" y2="20.32" width="0.1524" layer="91"/>
 <wire x1="-99.06" y1="20.32" x2="-99.06" y2="17.78" width="0.1524" layer="91"/>
 <pinref part="SUPPLY11" gate="G$1" pin="3.3V"/>
@@ -15304,6 +15304,15 @@ Grant Vesely</text>
 <junction x="-99.06" y="17.78"/>
 <pinref part="JP3" gate="A" pin="2"/>
 <pinref part="JP3" gate="A" pin="3"/>
+</segment>
+<segment>
+<pinref part="U1" gate="B" pin="VDDIO2"/>
+<wire x1="-8.89" y1="-48.26" x2="-7.62" y2="-48.26" width="0.1524" layer="91"/>
+<pinref part="C2" gate="G$1" pin="1"/>
+<wire x1="-7.62" y1="-48.26" x2="-5.08" y2="-48.26" width="0.1524" layer="91"/>
+<wire x1="-5.08" y1="-50.8" x2="-5.08" y2="-48.26" width="0.1524" layer="91"/>
+<pinref part="SUPPLY4" gate="G$1" pin="3.3V"/>
+<junction x="-7.62" y="-48.26"/>
 </segment>
 </net>
 <net name="GND" class="0">
@@ -15454,6 +15463,11 @@ Grant Vesely</text>
 <wire x1="-91.44" y1="22.86" x2="-113.03" y2="22.86" width="0.1524" layer="91"/>
 <pinref part="JP3" gate="A" pin="1"/>
 </segment>
+<segment>
+<pinref part="C2" gate="G$1" pin="2"/>
+<pinref part="GND15" gate="1" pin="GND"/>
+<wire x1="-5.08" y1="-60.96" x2="-5.08" y2="-58.42" width="0.1524" layer="91"/>
+</segment>
 </net>
 <net name="SWDIO" class="0">
 <segment>
@@ -15489,15 +15503,16 @@ Grant Vesely</text>
 <wire x1="5.08" y1="-86.36" x2="7.62" y2="-86.36" width="0.1524" layer="91"/>
 <pinref part="C7" gate="G$1" pin="1"/>
 <wire x1="7.62" y1="-86.36" x2="7.62" y2="-88.9" width="0.1524" layer="91"/>
-<wire x1="7.62" y1="-86.36" x2="16.51" y2="-86.36" width="0.1524" layer="91"/>
+<wire x1="7.62" y1="-86.36" x2="15.24" y2="-86.36" width="0.1524" layer="91"/>
 <junction x="7.62" y="-86.36"/>
 <pinref part="C8" gate="G$1" pin="1"/>
+<wire x1="15.24" y1="-86.36" x2="16.51" y2="-86.36" width="0.1524" layer="91"/>
 <wire x1="16.51" y1="-86.36" x2="16.51" y2="-88.9" width="0.1524" layer="91"/>
-<wire x1="16.51" y1="-86.36" x2="21.59" y2="-86.36" width="0.1524" layer="91"/>
-<junction x="16.51" y="-86.36"/>
-<label x="19.05" y="-86.36" size="1.778" layer="95"/>
 <pinref part="FB1" gate="G$1" pin="2"/>
 <wire x1="2.54" y1="-86.36" x2="7.62" y2="-86.36" width="0.1524" layer="91"/>
+<wire x1="16.51" y1="-86.36" x2="20.32" y2="-86.36" width="0.1524" layer="91"/>
+<label x="20.32" y="-86.36" size="1.778" layer="95" xref="yes"/>
+<junction x="16.51" y="-86.36"/>
 </segment>
 </net>
 <net name="N$3" class="0">
@@ -15776,14 +15791,14 @@ Grant Vesely</text>
 <approved hash="104,1,-8.89,-48.26,U1B,VDDIO2,3.3V,,,"/>
 <approved hash="113,1,80.59,3.81,D1,,,,,"/>
 <approved hash="113,1,71.7,1.27,D2,,,,,"/>
-<approved hash="113,1,-118.745,-90.0811,CN1,,,,,"/>
-<approved hash="113,1,41.22,-102.87,D3,,,,,"/>
-<approved hash="113,1,-49.2354,-76.1347,JP5,,,,,"/>
+<approved hash="113,1,-14.66,-102.87,D3,,,,,"/>
+<approved hash="113,1,-105.115,-75.8714,JP5,,,,,"/>
 <approved hash="113,1,-34.0529,47.2161,JP1,,,,,"/>
 <approved hash="113,1,-51.8329,59.9161,JP2,,,,,"/>
 <approved hash="113,1,-8.359,-31.219,FRAME1,,,,,"/>
 <approved hash="113,1,92.6677,-39.1439,JP6,,,,,"/>
 <approved hash="113,1,-91.2029,5.30606,JP3,,,,,"/>
+<approved hash="113,1,-120.015,-90.0811,CN2,,,,,"/>
 </errors>
 </schematic>
 </drawing>
