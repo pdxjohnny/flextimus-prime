@@ -1,0 +1,5 @@
+#!/bin/sh
+#
+# This hook ensures that you can't commit unless it builds.
+
+exec make -C src clean all

@@ -4,6 +4,36 @@ Posture monitor
 
 ## Getting Started
 
+Make sure you have git configured.
+
+```console
+git config --global user.name 'Frist Last'
+git config --global user.email 'first.last@example.com'
+```
+
+Install the git commit hooks. This will ensure that you can only commit if the
+source compiles successfully.
+
+```console
+./scripts/install.sh
+```
+
+Find out what you should work on
+
+```console
+git todo
+```
+
+> This will be run every time you pull so that see todos added by others.
+
+Create a new branch for your work
+
+```console
+git checkout -b describe_my_intended_changes
+```
+
+Start hacking!
+
 ### Dependencies
 
 1. [mbed](https://os.mbed.com/docs/v5.6/tools/setup.html)

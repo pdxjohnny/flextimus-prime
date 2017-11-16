@@ -23,7 +23,9 @@ CCFLAGS+= -I libs/Libraries/STM32F0xx_StdPeriph_Driver/inc
 # List the object files involved in this project
 SRCS=$(wildcard *.c) \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rtc.c \
-		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rcc.c
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rcc.c \
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_adc.c \
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_gpio.c
 OBJS=$(SRCS:.c=.o)
 
 all: main.elf

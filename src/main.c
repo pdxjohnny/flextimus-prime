@@ -26,18 +26,12 @@
   */
 
 /* Includes ------------------------------------------------------------------*/
+#include <adc.h>
 #include "main.h"
 
 /** @addtogroup STM32F0xx_StdPeriph_Templates
   * @{
   */
-
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
 
 void delay(int dly) {
   while (dly--);
@@ -50,13 +44,14 @@ void delay(int dly) {
   */
 int main(void)
 {
-
   /*!< At this stage the microcontroller clock setting is already configured,
        this is done through SystemInit() function which is called from startup
        file (startup_stm32f0xx.s) before to branch to application main.
        To reconfigure the default setting of SystemInit() function, refer to
        system_stm32f0xx.c file
      */
+  uint32_t temp;
+  adc_status_t adc_status;
   /* Add your application code here */
   // Need to limit ADC clock to below 14MHz so will change ADC prescaler to 4
   // RCC_CFGR |= BIT14;
@@ -66,12 +61,41 @@ int main(void)
 	GPIOB->MODER |= GPIO_MODER_MODER3_0; // make bit3  an output
 	GPIOB->MODER &= ~GPIO_MODER_MODER3_1; // make bit3  an output
 
+  adc_status = adc_up();
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
+
+  __enable_irq();
+
 	while (1) {
 		GPIOB->ODR |= GPIO_MODER_MODER1_1;
 		delay(500000);
+    adc_status = adc_convert(ADC_CONVERT_PA1);
+    if (ADC_ERROR(adc_status)) {
+      assert_failed(__FILE__, __LINE__);
+    }
+    temp = adc_status.data;
 		GPIOB->ODR &= ~GPIO_MODER_MODER1_1;
 		delay(500000);
 	}
+
+  adc_status = adc_down();
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
+
+  /* TODO go to sleep
+   *
+   * Calls the ARM `WFI` instruction.
+   *
+   * WFI (Wait For Interrupt) makes the processor suspend execution (Clock is
+   * stopped) until one of the following events take place:
+   * - An IRQ interrupt
+   * - An FIQ interrupt
+   * - A Debug Entry request made to the processor.
+   */
+  // cpu_sleep();
 
 	return 0;
 }
@@ -83,15 +107,9 @@ int main(void)
   * @param  line: assert_param error line source number
   * @retval None
   */
-void assert_failed(uint8_t* file, uint32_t line)
-{ 
-  /* User can add his own implementation to report the file name and line number,
-     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
-
+void assert_failed(uint8_t* file, uint32_t line) {
   /* Infinite loop */
-  while (1)
-  {
-  }
+  while (1) {}
 }
 
 /**
