@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE eagle SYSTEM "eagle.dtd">
-<eagle version="8.4.0">
+<eagle version="8.4.2">
 <drawing>
 <settings>
 <setting alwaysvectorfont="no"/>
@@ -3591,6 +3591,7 @@ Please make sure your boards conform to these design rules.</description>
 <param name="slThermalsForVias" value="0"/>
 <param name="dpMaxLengthDifference" value="10mm"/>
 <param name="dpGapFactor" value="2.5"/>
+<param name="checkAngle" value="0"/>
 <param name="checkFont" value="1"/>
 <param name="checkRestrict" value="1"/>
 <param name="checkStop" value="0"/>
@@ -3834,7 +3835,7 @@ Please make sure your boards conform to these design rules.</description>
 <wire x1="29.9339" y1="26.6573" x2="29.8958" y2="26.6954" width="0.3048" layer="1"/>
 <via x="29.8958" y="26.6954" extent="1-16" drill="0.35"/>
 <wire x1="29.8958" y1="26.6954" x2="29.8958" y2="41.1861" width="0.8128" layer="16"/>
-<wire x1="29.8958" y1="41.1861" x2="29.8958" y2="41.7449" width="0.3048" layer="16"/>
+<wire x1="29.8958" y1="41.1861" x2="29.8958" y2="41.7449" width="0.8128" layer="16"/>
 <wire x1="29.8958" y1="41.7449" x2="29.8831" y2="41.7576" width="0.3048" layer="16"/>
 <wire x1="35.1028" y1="19.4056" x2="35.1282" y2="19.431" width="0.3048" layer="1"/>
 <via x="35.1282" y="19.431" extent="1-16" drill="0.35"/>
@@ -3945,7 +3946,7 @@ Please make sure your boards conform to these design rules.</description>
 <via x="56.4134" y="10.3886" extent="1-16" drill="0.35"/>
 <via x="49.8856" y="44.6532" extent="1-16" drill="0.35"/>
 <contactref element="C2" pad="2"/>
-<via x="36.7919" y="33.02" extent="1-16" drill="0.35"/>
+<via x="36.83" y="33.02" extent="1-16" drill="0.35"/>
 </signal>
 <signal name="AVDD">
 <contactref element="C7" pad="1"/>
@@ -4342,6 +4343,12 @@ Please make sure your boards conform to these design rules.</description>
 </signals>
 <errors>
 <approved hash="19 1 4361d3ddee6c7ed0"/>
+<approved hash="19 1 4361d3ddee6c7ed0"/>
+<approved hash="19 1 4361d3ddee6c7ed0"/>
+<approved hash="19 1 4361d3ddee6c7ed0"/>
+<approved hash="19 1 4361d3ddee6c7ed0"/>
+<approved hash="19 1 4361d3ddee6c7ed0"/>
+<approved hash="19,1,2e20bc5c81ee1392"/>
 </errors>
 </board>
 </drawing>
