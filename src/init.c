@@ -1,3 +1,4 @@
+#include <interrupt_handler.h>
 void init(void);
 int main(void);
 void Default_Handler(void);
@@ -40,7 +41,7 @@ const void * Vectors[] __attribute__((section(".vectors"))) ={
 	Default_Handler, 	/* 9: DMA_CH1 */
 	Default_Handler, 	/* 10: DMA_CH2_3, DMA2_CH_1_2 */
 	Default_Handler, 	/* 11: DMA_CH4_5_6_7, DMA2_CH3_4_5 */
-	Default_Handler, 	/* 12: ADC_COMP */
+	adc_handler,     	/* 12: ADC_COMP */
 	Default_Handler, 	/* 13: TIM1_BRK_UP_TRG_COM */
 	Default_Handler, 	/* 14: TIM1_CC */
 	Default_Handler, 	/* 15: TIM2 */

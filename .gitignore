@@ -2,4 +2,5 @@
 *.s\#*
 *.venv
 tags
+*.swp
 preliminary-bom.xls
