@@ -3,7 +3,7 @@
 # where the Cortex M0 libraries from gcc are installed on *my* system.  *Your* system
 # will be different
 # Tell the linker where to find the libraries -> important: use thumb versions
-ARM_TOOLCHAIN_VERSION=$(shell ls -1 /usr/lib/gcc/arm-none-eabi | head)
+ARM_TOOLCHAIN_VERSION=$(shell ls -1 /usr/lib/gcc/arm-none-eabi | head -n 1)
 LIBSPEC=-L /usr/lib/gcc/arm-none-eabi/$(ARM_TOOLCHAIN_VERSION)/armv6-m
 
 # Specify the compiler to use
