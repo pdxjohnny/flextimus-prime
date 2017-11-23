@@ -1,0 +1,134 @@
+
+Allocating common symbols
+Common symbol       size              file
+
+PauseState          0x4               main.o
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+flash            0x0000000008000000 0x0000000000008000
+ram              0x0000000020000000 0x0000000000001800
+*default*        0x0000000000000000 0xffffffffffffffff
+
+Linker script and memory map
+
+LOAD init.o
+LOAD main.o
+LOAD /usr/lib/gcc/arm-none-eabi/4.9.3/armv6-m/libgcc.a
+                0x0000000008000000                . = ORIGIN (flash)
+
+.text           0x0000000008000000      0x360
+ *(.vectors)
+ .vectors       0x0000000008000000       0xc0 init.o
+                0x0000000008000000                Vectors
+ *(.text)
+ .text          0x00000000080000c0       0x7c init.o
+                0x00000000080000c0                init
+                0x0000000008000134                Default_Handler
+ .text          0x000000000800013c      0x224 main.o
+                0x000000000800013c                delay
+                0x0000000008000158                initClock
+                0x00000000080001f4                configPins
+                0x00000000080002c8                ButtonIRQ
+                0x00000000080002f4                Pause
+                0x0000000008000338                main
+
+.glue_7         0x0000000008000360        0x0
+ .glue_7        0x0000000008000360        0x0 linker stubs
+
+.glue_7t        0x0000000008000360        0x0
+ .glue_7t       0x0000000008000360        0x0 linker stubs
+
+.vfp11_veneer   0x0000000008000360        0x0
+ .vfp11_veneer  0x0000000008000360        0x0 linker stubs
+
+.v4_bx          0x0000000008000360        0x0
+ .v4_bx         0x0000000008000360        0x0 linker stubs
+
+.iplt           0x0000000008000360        0x0
+ .iplt          0x0000000008000360        0x0 init.o
+
+.rel.dyn        0x0000000008000360        0x0
+ .rel.iplt      0x0000000008000360        0x0 init.o
+                0x0000000020000000                . = ORIGIN (ram)
+
+.data           0x0000000020000000        0x0 load address 0x0000000008000360
+                0x0000000008000360                INIT_DATA_VALUES = LOADADDR (.data)
+                0x0000000020000000                INIT_DATA_START = .
+ *(.data)
+ .data          0x0000000020000000        0x0 init.o
+ .data          0x0000000020000000        0x0 main.o
+                0x0000000020000000                INIT_DATA_END = .
+                0x0000000020000000                BSS_START = .
+
+.igot.plt       0x0000000020000000        0x0 load address 0x0000000008000360
+ .igot.plt      0x0000000020000000        0x0 init.o
+
+.bss            0x0000000020000000        0x4 load address 0x0000000008000360
+ *(.bss)
+ .bss           0x0000000020000000        0x0 init.o
+ .bss           0x0000000020000000        0x0 main.o
+ COMMON         0x0000000020000000        0x4 main.o
+                0x0000000020000000                PauseState
+                0x0000000020000004                BSS_END = .
+OUTPUT(main.elf elf32-littlearm)
+
+.debug_info     0x0000000000000000      0x1e4
+ .debug_info    0x0000000000000000      0x105 init.o
+ .debug_info    0x0000000000000105       0xdf main.o
+
+.debug_abbrev   0x0000000000000000      0x1aa
+ .debug_abbrev  0x0000000000000000       0xd2 init.o
+ .debug_abbrev  0x00000000000000d2       0xd8 main.o
+
+.debug_aranges  0x0000000000000000       0x40
+ .debug_aranges
+                0x0000000000000000       0x20 init.o
+ .debug_aranges
+                0x0000000000000020       0x20 main.o
+
+.debug_line     0x0000000000000000       0xd3
+ .debug_line    0x0000000000000000       0x49 init.o
+ .debug_line    0x0000000000000049       0x8a main.o
+
+.debug_str      0x0000000000000000      0x132
+ .debug_str     0x0000000000000000       0xf5 init.o
+ .debug_str     0x00000000000000f5       0x3d main.o
+                                         0xa4 (size before relaxing)
+
+.comment        0x0000000000000000       0x38
+ .comment       0x0000000000000000       0x38 init.o
+                                         0x39 (size before relaxing)
+ .comment       0x0000000000000038       0x39 main.o
+
+.ARM.attributes
+                0x0000000000000000       0x31
+ .ARM.attributes
+                0x0000000000000000       0x31 init.o
+ .ARM.attributes
+                0x0000000000000031       0x31 main.o
+
+.debug_frame    0x0000000000000000      0x108
+ .debug_frame   0x0000000000000000       0x4c init.o
+ .debug_frame   0x000000000000004c       0xbc main.o
+
+Cross Reference Table
+
+Symbol                                            File
+BSS_END                                           init.o
+BSS_START                                         init.o
+ButtonIRQ                                         main.o
+Default_Handler                                   init.o
+INIT_DATA_END                                     init.o
+INIT_DATA_START                                   init.o
+INIT_DATA_VALUES                                  init.o
+Pause                                             main.o
+PauseState                                        main.o
+Vectors                                           init.o
+configPins                                        main.o
+delay                                             main.o
+init                                              init.o
+initClock                                         main.o
+main                                              main.o
+                                                  init.o
