@@ -54,30 +54,105 @@ void configPins()
 {
 	// Power up PORTA
 	RCC_AHBENR |= BIT17;
-	
-}	
+	// Power up PORTB
+	RCC_AHBENR |= BIT18;
 
+  // Set Inputs
+  GPIOA_MODER |= BIT0; // Flex Sensor
+  GPIOA_MODER &= ~BIT1; // "" A0
+  GPIOB_MODER |= BIT6; // BTN1 - Pause
+  GPIOB_MODER &= ~BIT7; // "" B3
+  GPIOB_MODER |= BIT8; // BTN2 - Config
+  GPIOB_MODER &= ~BIT9; // "" B4
+
+  // Set Outputs
+  GPIOA_MODER |= BIT4; // Buzzer
+  GPIOA_MODER &= ~BIT5; // "" A2
+  GPIOB_MODER |= BIT0; // LED1 - Pause
+  GPIOB_MODER &= ~BIT1; // "" B0
+  GPIOB_MODER |= BIT2; // LED2 - Config
+  GPIOB_MODER &= ~BIT3; // "" B1
+
+
+}	
+/*
 int main()
 {
-	initClock();
+  if (FLASH_ACR == 1)
+  {
+	  initClock();
+  }
 	unsigned i=0;
-	configPins(); 
-	GPIOA_MODER |= BIT4; // make bit2  an output
-	GPIOA_MODER &= ~BIT5; // make bit2  an output
+	configPins();
+	GPIOB_MODER |= BIT6; // make bit3 an input
+	GPIOB_MODER &= ~BIT7; // make bit3 an input	
+	GPIOB_MODER |= BIT0; // make bit0  an output
+	GPIOB_MODER &= ~BIT1; // make bit0  an output
 	while(1)
 	{
-		GPIOA_ODR |= BIT2;
-		delay(200000);
-		GPIOA_ODR &= ~BIT2;
-		delay(200000);
+		if (GPIOB_IDR &  BIT3)
+    {
+      GPIOB_ODR |= BIT0;
+		  delay(2000000);
+		  GPIOB_ODR &= ~BIT0;
+		  delay(2000000);
+    }
 	} 
 	return 0;
+}
+*/
+
+int PauseState;
+
+// IRQ handler for both button interrupts
+int ButtonIRQ()
+{
+  if (GPIOB_IDR & BIT3)
+  {
+    while (GPIOB_IDR & BIT3)
+    {
+      // Do nothing until released
+    }
+    Pause();
+  }
+//  else if (GPIOB_IDR & BIT4)
+//    Config();
+  else
+    return 0;
+}
+
+// Function to pause the alert system
+int Pause()
+{
+  if (PauseState == 0)
+  {
+    PauseState = 1;
+    GPIOB_ODR |= BIT0; // Turn on LED
+	  //delay(3000000); 
+  }
+  else
+  {
+    PauseState = 0;
+    GPIOB_ODR &= ~BIT0; // Turn off LED
+	  //delay(3000000); 
+  }
+  return 0;
 }
 
 
 
+int main()
+{
+   if (FLASH_ACR == 1)
+  {
+	  initClock();
+  }
+  configPins();
+  PauseState = 0;
+  while(1)
+  {
+    ButtonIRQ();
+  }
 
-
-
-
-
+  return 0;
+}
