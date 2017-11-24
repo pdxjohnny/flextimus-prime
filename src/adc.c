@@ -30,6 +30,7 @@ adc_status_t ADC_NEED_CONVERSION_CALLBACK = {
  * This is caused by a called to adc_convert_async
  */
 adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
+adc_status_t (*adc_adrdy_handler)();
 
 /* Create and returns a adc_status_t which has a code of ADC_STATUS_OK with the
  * data specified as an argument. */
@@ -277,12 +278,15 @@ adc_status_t adc_convert(adc_convert_t pin_to_convert) {
   return status;
 }
 
-/* Interrupt handler for ADC. Called when a conversion is complete.
+/* Interrupt handler for ADC. Called when the ADC becomes ready or a conversion
+ * is complete.
  */
 void adc_handler() {
   adc_within_interrupt = true;
-  /* Only call the callback function if it points somewhere valid */
-  if (adc_conversion_complete != NULL) {
+  if (ADC_GetITStatus(ADC1, ADC_IT_ADRDY) && adc_adrdy_handler != NULL) {
+    adc_adrdy_handler();
+  } else if (ADC_GetITStatus(ADC1, ADC_IT_EOC) &&
+      adc_conversion_complete != NULL) {
     adc_conversion_complete(adc_read());
   }
   adc_within_interrupt = false;
@@ -296,16 +300,12 @@ void adc_handler() {
 adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
     adc_status_t (*set_adc_conversion_complete)(adc_convertion_result result)) {
   adc_status_t status;
+  NVIC_InitTypeDef NVIC_InitStructure;
   /* Make sure that we have a conversion callback */
   if (set_adc_conversion_complete == NULL) {
     return ADC_NEED_CONVERSION_CALLBACK;
   }
   adc_conversion_complete = set_adc_conversion_complete;
-  /* Start converting if we are not already converting */
-  status = adc_start_converting();
-  if (ADC_ERROR(status)) {
-    return status;
-  }
   /* 13.7.2 Auto-off mode (AUTOFF):
    *  When AUTOFF=1, the ADC is always powered off when not converting and
    *  automatically wakes-up when a conversion is started (by software or
@@ -323,25 +323,28 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
    *  that reads the data.
    */
   ADC_WaitModeCmd(ADC1, ENABLE);
-  /* (3) Select channel for desired pin */
-  status = adc_select_conversion_pin(pin_to_convert);
+  /* (4) Enable interrupts on EOC (End Of Conversion) */
+  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+  /* Enable and set EXTI0 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Start converting */
+  status = adc_start_converting();
   if (ADC_ERROR(status)) {
     return status;
   }
-  /* (4) Enable interrupts on EOC (End Of Conversion) */
-  // ADC1->IER = ADC_IER_EOCIE;
-  /* (1) Enable Interrupt on ADC in NVIC */
-  NVIC_EnableIRQ(ADC1_COMP_IRQn);
-  /* (2) Set priority for ADC in NVIC */
-  NVIC_SetPriority(ADC1_COMP_IRQn, 0);
   return status;
 }
 
-adc_status_t adc_up() {
+adc_status_t adc_up(adc_status_t (*adc_set_adrdy_handler)()) {
   ADC_InitTypeDef     ADC_InitStructure;
   GPIO_InitTypeDef    GPIO_InitStructure;
 
   adc_conversion_complete = NULL;
+  adc_adrdy_handler = adc_set_adrdy_handler;
 
   /* GPIOA Periph clock enable */
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
@@ -376,8 +379,8 @@ adc_status_t adc_up() {
   /* Enable the ADC peripheral */
   ADC_Cmd(ADC1, ENABLE);
 
-  /* Wait the ADRDY flag */
-  while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
+  /* Interrupt when ready */
+  ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);
 
   // TODO perhaps use the adc_watch_enable function
   return ADC_OK;
