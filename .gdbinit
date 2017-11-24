@@ -1,3 +1,5 @@
+# Disable pagination to not have to press enter
+set pagination off
 # Load the kernel into GDB
 file src/main.elf
 # TUI (Text User Interface)
@@ -15,7 +17,5 @@ command 1
 backtrace full
 set pagination on
 end
-# Disable pagination to not have to press enter to run
-set pagination off
 # Run the kernel
 continue
