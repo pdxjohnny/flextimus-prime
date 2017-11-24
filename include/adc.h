@@ -3,6 +3,9 @@
 
 #include <stdint.h>
 
+#define ADC_VOLTS(X)        ((X) / 1000)
+#define ADC_MILLIVOLTS(X)   (((X) % 1000) / 100)
+
 typedef enum {
   ADC_STATUS_OK,
   ADC_STATUS_TIMEOUT,
@@ -26,7 +29,7 @@ extern adc_status_t ADC_CONVERSION_IN_PROGRESS;
 extern adc_status_t ADC_NEED_CONVERSION_CALLBACK;
 
 typedef enum {
-  ADC_CONVERT_PA1,
+  ADC_CONVERT_PA0,
 } adc_convert_t;
 
 typedef adc_status_t adc_convertion_result;

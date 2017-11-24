@@ -84,8 +84,8 @@ static adc_status_t adc_start_hsi14() {
  */
 adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert) {
   switch (pin_to_convert) {
-    case ADC_CONVERT_PA1:
-      ADC1->CHSELR |= ADC_CHSELR_CHSEL1;
+    case ADC_CONVERT_PA0:
+      ADC1->CHSELR |= ADC_CHSELR_CHSEL0;
       return ADC_OK;
     default:
       break;
@@ -208,17 +208,18 @@ adc_status_t adc_watch_enable(adc_convert_t pin_to_convert,
 }
 
 /* Waits for the conversion to complete by polling the ISR to see if the End Of
- * Conversion (EOC) bit is set.
+ * Conversion (EOC) bit is set. Use ADC_VOLTS and ADC_MILLIVOLTS with result.
  */
 adc_status_t adc_read() {
   adc_status_t status;
   /* Wait end of conversion */
-	status = adc_wait(&ADC1->ISR, ADC_ISR_EOC, ADC_ISR_EOC);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-  /* Store the ADC conversion result */
-  return adc_success(ADC1->DR);
+	// status = adc_wait(&ADC1->ISR, ADC_ISR_EOC, ADC_ISR_EOC);
+  // if (ADC_ERROR(status)) {
+  //   return status;
+  // }
+  while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET) {};
+  /* Get ADC1 converted data and compute the voltage */
+  return adc_success((ADC_GetConversionValue(ADC1) * 3300) / 0xFFF);
 }
 
 /* Tell the other functions through the global variable `adc_converting` that we
@@ -230,6 +231,8 @@ static adc_status_t adc_start_converting() {
     return ADC_CONVERSION_IN_PROGRESS;
   }
   adc_converting = true;
+  /* ADC1 regular Software Start Conv */
+  ADC_StartOfConversion(ADC1);
   return ADC_OK;
 }
 
@@ -266,26 +269,10 @@ adc_status_t adc_convert(adc_convert_t pin_to_convert) {
   if (ADC_ERROR(status)) {
     return status;
   }
-  /* Ensure HSI14 is powered and ready */
-  adc_start_hsi14();
-  /* (1) Select HSI14 by writing 00 in CKMODE (reset value) */
-  ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
-  /* (2) Select channel for desired pin */
-  status = adc_select_conversion_pin(pin_to_convert);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-  /* (3) Select a sampling mode of 111 i.e. 239.5 ADC clk to be greater
-   * than 17.1us */
-  ADC1->SMPR |= ADC_SMPR_SMP_0 | ADC_SMPR_SMP_1 | ADC_SMPR_SMP_2;
-  /* TODO Find out if we need to set the VREFEN bit in the common configuration
-   * register. */
-  /* (4) Wake-up the VREFINT (only for VBAT, Temp sensor and VRefInt) */
-  ADC->CCR |= ADC_CCR_VREFEN;
-  /* Performs the AD conversion. Start the ADC conversion */
-  ADC1->CR |= ADC_CR_ADSTART;
   /* Store the ADC conversion result */
   status = adc_read();
+  /* ADC1 regular Software Stop Conv */
+  ADC_StopOfConversion(ADC1);
   adc_converting = false;
   return status;
 }
@@ -319,44 +306,30 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   if (ADC_ERROR(status)) {
     return status;
   }
-  /* (1) Select HSI14 by writing 00 in CKMODE (reset value)
-   *
-   * 6.2.9 ADC clock
-   *  The ADC clock selection is done inside the ADC_CFGR2 (refer to Section
-   *  13.12.5: ADC configuration register 2 (ADC_CFGR2) on page 263). It can be
-   *  either the dedicated 14 MHz RC oscillator (HSI14) connected on the ADC
-   *  asynchronous clock input or PCLK divided by 2 or 4. The 14 MHz RC
-   *  oscillator can be configured by software either to be turned on/off
-   *  ("uto-off mode") by the ADC interface or to be always enabled. The HSI 14
-   *  MHz RC oscillator cannot be turned on by ADC interface when the APB clock
-   *  is selected as an ADC kernel clock.
-   */
-  /* Ensure HSI14 is powered and ready */
-  adc_start_hsi14();
-  ADC1->CFGR2 &= ~ADC_CFGR2_CKMODE;
-  /* (2) Select only software trigger (EXTEN_0), auto off, and wait mode.
-   * 13.7.2 Auto-off mode (AUTOFF):
+  /* 13.7.2 Auto-off mode (AUTOFF):
    *  When AUTOFF=1, the ADC is always powered off when not converting and
    *  automatically wakes-up when a conversion is started (by software or
    *  hardware trigger). A startup-time is automatically inserted between the
    *  trigger event which starts the conversion and the sampling time of the
    *  ADC. The ADC is then automatically disabled once the sequence of
    *  conversions is complete.
-   * 13.7.1 Wait mode conversion
+   */
+  ADC_AutoPowerOffCmd(ADC1, ENABLE);
+  /* 13.7.1 Wait mode conversion
    *  When the WAIT bit is set to 1 in the ADC_CFGR1 register, a new conversion
    *  can start only if the previous data has been treated, once the ADC_DR
    *  register has been read or if the EOC bit has been cleared. This is a way
    *  to automatically adapt the speed of the ADC to the speed of the system
    *  that reads the data.
    */
-  ADC1->CFGR1 |= ADC_CFGR1_EXTEN_0 | ADC_CFGR1_AUTOFF | ADC_CFGR1_WAIT;
+  ADC_WaitModeCmd(ADC1, ENABLE);
   /* (3) Select channel for desired pin */
   status = adc_select_conversion_pin(pin_to_convert);
   if (ADC_ERROR(status)) {
     return status;
   }
   /* (4) Enable interrupts on EOC (End Of Conversion) */
-  ADC1->IER = ADC_IER_EOCIE;
+  // ADC1->IER = ADC_IER_EOCIE;
   /* (1) Enable Interrupt on ADC in NVIC */
   NVIC_EnableIRQ(ADC1_COMP_IRQn);
   /* (2) Set priority for ADC in NVIC */
@@ -365,24 +338,46 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
 }
 
 adc_status_t adc_up() {
-  ADC_InitTypeDef adc_cfg;
-  GPIO_InitTypeDef gpio_cfg;
-
-  ADC_StructInit(&adc_cfg);
-  GPIO_StructInit(&gpio_cfg);
+  ADC_InitTypeDef     ADC_InitStructure;
+  GPIO_InitTypeDef    GPIO_InitStructure;
 
   adc_conversion_complete = NULL;
 
-  /* Start the clocks */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-  /* TODO Are these GPIO settings correct? */
+  /* GPIOA Periph clock enable */
   RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+  /* Configure ADC Channel 0 as analog input */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-  GPIO_Init(GPIOA, &gpio_cfg);
-  ADC_Init(ADC1, &adc_cfg);
+  /* ADC1 Periph clock enable */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
+  /* Ensure HSI14 is powered and ready */
+  adc_start_hsi14();
+  /* ADCs DeInit */
+  ADC_DeInit(ADC1);
+  /* Initialize ADC structure */
+  ADC_StructInit(&ADC_InitStructure);
+  /* Configure the ADC1 in continuous mode with a resolution equal to 12 bits  */
+  ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
+  ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+  ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
+  ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
+  ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
+  ADC_Init(ADC1, &ADC_InitStructure);
 
-  /* TODO Replace this channel with the correct one */
-  ADC_ChannelConfig(ADC1, ADC_Channel_0, 0);
+  /* Convert the ADC1 Channel 0 (PA0) with 239.5 Cycles as sampling time */
+  ADC_ChannelConfig(ADC1, ADC_Channel_0, ADC_SampleTime_239_5Cycles);
+  /* ADC Discontinuous mode, convert once then stop */
+  ADC_DiscModeCmd(ADC1, ENABLE);
+  /* ADC Calibration */
+  ADC_GetCalibrationFactor(ADC1);
+  /* Enable the ADC peripheral */
+  ADC_Cmd(ADC1, ENABLE);
+
+  /* Wait the ADRDY flag */
+  while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
 
   // TODO perhaps use the adc_watch_enable function
   return ADC_OK;
