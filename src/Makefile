@@ -3,7 +3,8 @@
 # where the Cortex M0 libraries from gcc are installed on *my* system.  *Your* system
 # will be different
 # Tell the linker where to find the libraries -> important: use thumb versions
-LIBSPEC=-L /usr/lib/gcc/arm-none-eabi/7.2.0/armv6-m
+ARM_TOOLCHAIN_VERSION=$(shell ls -1 /usr/lib/gcc/arm-none-eabi | head -n 1)
+LIBSPEC=-L /usr/lib/gcc/arm-none-eabi/$(ARM_TOOLCHAIN_VERSION)/armv6-m
 
 # Specify the compiler to use
 CC=arm-none-eabi-gcc
@@ -25,7 +26,8 @@ SRCS=$(wildcard *.c) \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rtc.c \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_rcc.c \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_adc.c \
-		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_gpio.c
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_gpio.c #\
+		# hd44780.c
 OBJS=$(SRCS:.c=.o)
 
 all: main.elf
