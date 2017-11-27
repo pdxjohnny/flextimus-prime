@@ -1,10 +1,17 @@
-#include <led.h>
 #include <adc.h>
+#include <gpio.h>
 #include "main.h"
 #include "config.h"
 #include "hd44780.h"
 
-static uint32_t volts, millivolts;
+struct {
+  bool paused;
+  struct {
+    uint32_t volts;
+    uint32_t millivolts;
+  } adc;
+} flextimus_prime;
+
 static int blink_rate;
 
 void assert_failed(uint8_t* file, uint32_t line) {
@@ -16,15 +23,15 @@ void delay(int dly) {
 }
 
 adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
-  volts = ADC_VOLTS(adc_status.data);
-  millivolts = ADC_MILLIVOLTS(adc_status.data);
-  led_off(BLINK_LED);
+  flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
+  flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
+  gpio_off(PAUSE_LED);
   return ADC_OK;
 }
 
 adc_status_t adc_up_callback() {
   adc_status_t adc_status;
-  led_on(BLINK_LED);
+  gpio_on(PAUSE_LED);
   adc_status = adc_convert_async(ADC_CONVERT_PA0, adc_convert_async_callback);
   if (ADC_ERROR(adc_status)) {
     return adc_status;
@@ -37,9 +44,9 @@ int main(void) {
 
   blink_rate = 200000;
 
-  led_up(BLINK_LED);
+  gpio_up(PAUSE_LED);
 
-  adc_status = adc_up(adc_up_callback);
+  adc_status = adc_up(FLEX_SENSOR, adc_up_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
@@ -58,14 +65,14 @@ int main(void) {
   HD44780_Clear();*/
 
 	while (1) {
-    led_on(BLINK_LED);
+    gpio_on(PAUSE_LED);
     delay(blink_rate);
-    led_off(BLINK_LED);
+    gpio_off(PAUSE_LED);
     delay(blink_rate);
     // PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
 	}
 
-  led_down(BLINK_LED);
+  gpio_down(PAUSE_LED);
 
   adc_status = adc_down();
   if (ADC_ERROR(adc_status)) {
@@ -73,4 +80,34 @@ int main(void) {
   }
 
 	return 0;
+}
+
+// Function to pause the alert system
+void flextimus_prime_pause_pressed() {
+  if (flextimus_prime.paused == 0) {
+    flextimus_prime.paused = true;
+    gpio_on(PAUSE_LED);
+  } else {
+    flextimus_prime.paused = false;
+    gpio_off(PAUSE_LED);
+  }
+}
+
+void flextimus_prime_config_pressed() {
+  if (flextimus_prime.paused == 0) {
+    flextimus_prime.paused = true;
+    gpio_on(PAUSE_LED);
+  } else {
+    flextimus_prime.paused = false;
+    gpio_off(PAUSE_LED);
+  }
+}
+
+// IRQ handler for both button interrupts
+void button_irq_handler() {
+  if (gpio_asserted(PAUSE_BUTTON)) {
+    flextimus_prime_pause_pressed();
+  } else if (gpio_asserted(CONFIG_BUTTON)) {
+    flextimus_prime_config_pressed();
+  }
 }

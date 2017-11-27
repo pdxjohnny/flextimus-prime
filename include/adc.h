@@ -2,6 +2,11 @@
 #define _ADC_H_
 
 #include <stdint.h>
+#include <gpio.h>
+
+#ifndef ADC_TIMEOUT_TICKS
+#define ADC_TIMEOUT_TICKS   100000
+#endif /* ADC_TIMEOUT_TICKS */
 
 #define ADC_VOLTS(X)        ((X) / 1000)
 #define ADC_MILLIVOLTS(X)   (((X) % 1000) / 100)
@@ -42,7 +47,8 @@ adc_status_t adc_read();
 adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert);
 adc_status_t adc_watch_enable(adc_convert_t pin_to_convert,
     uint16_t vrefint_low, uint16_t vrefint_high);
-adc_status_t adc_up(adc_status_t (*adc_conversion_complete)(void));
+adc_status_t adc_up(gpio_pin_t gpio_pin,
+    adc_status_t (*adc_conversion_complete)(void));
 adc_status_t adc_down();
 adc_status_t adc_convert(adc_convert_t pin_to_convert);
 adc_status_t adc_convert_async(adc_convert_t pin_to_convert,

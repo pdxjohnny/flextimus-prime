@@ -1,4 +1,5 @@
 #include <adc.h>
+#include <gpio.h>
 #include "main.h"
 
 static bool adc_within_interrupt;
@@ -39,41 +40,19 @@ adc_status_t adc_success(adc_status_data_t data) {
   return status;
 }
 
+
 /* Poll bit with timeout. If we are in an interrupt we only poll once. */
 adc_status_t adc_wait(__IO uint32_t *reg, uint32_t and_with,
     uint32_t what_it_should_be) {
-	for (unsigned int i = 0; (*reg & and_with) != what_it_should_be; i++) {
+  for (unsigned int i = 0; (*reg & and_with) != what_it_should_be; i++) {
     /* If we are in an interrupt and have checked once already then we need to
      * exit with a timeout to allow other interrupts to be serviced as quickly
      * as possible. */
-    if (adc_within_interrupt == true && i > 1) {
-      return ADC_TIMEOUT;
-    }
-    /* TODO For robust implementation, add time-out management here. Or perhaps
-     * relinquish execution with a call to a thread scheduler. */
-    if (i > 100000) {
+    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {
       return ADC_TIMEOUT;
     }
 	}
-  return ADC_OK;
-}
-
-/* Turns on the HSI14 RC oscillartor if it is not already ready. */
-static adc_status_t adc_start_hsi14() {
-  adc_status_t status;
-  /* This code turns on and selects the HSI14 as clock source. */
-  if ((RCC->CR2 & RCC_CR2_HSI14RDY) == 0) {
-    /* (1) Enable the peripheral clock of the ADC */
-    RCC->APB2ENR |= RCC_APB2ENR_ADC1EN;
-    /* (2) Start HSI14 RC oscillator */
-    RCC->CR2 |= RCC_CR2_HSI14ON;
-    /* (3) Wait HSI14 is ready */
-    status = adc_wait(&RCC->CR2, RCC_CR2_HSI14RDY, RCC_CR2_HSI14RDY);
-    if (ADC_ERROR(status)) {
-      return status;
-    }
-  }
-  return ADC_OK;
+	return ADC_OK;
 }
 
 /* Chooses which pin on the STM32F042 we want to convert from using the ADC.
@@ -92,120 +71,6 @@ adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert) {
       break;
   }
   return ADC_INVALID_CONVERT_PIN;
-}
-
-/* 13.4.1 Calibration (ADCAL)
- *
- * The ADC has a calibration feature. During the procedure, the ADC calculates a
- * calibration factor which is internally applied to the ADC until the next ADC
- * power-off. The application must not use the ADC during calibration and must
- * wait until it is complete.
- *
- * Calibration should be performed before starting A/D conversion. It removes
- * the offset error which may vary from chip to chip due to process variation.
- *
- * The calibration is initiated by software by setting bit ADCAL=1. Calibration
- * can only be initiated when the ADC is disabled (when ADEN=0). ADCAL bit stays
- * at 1 during all the calibration sequence. It is then cleared by hardware as
- * soon the calibration completes. After this, the calibration factor can be
- * read from the ADC_DR register (from bits 6 to 0).
- *
- * The internal analog calibration is kept if the ADC is disabled (ADEN=0). When
- * the ADC operating conditions change (VDDA changes are the main contributor to
- * ADC offset variations and temperature change to a lesser extend), it is
- * recommended to re-run a calibration cycle.
- *
- * The calibration factor is lost each time power is removed from the ADC (for
- * example when the product enters STANDBY mode).
- *
- * Calibration software procedure
- * 1. Ensure that ADEN=0 and DMAEN=0
- * 2. Set ADCAL=1
- * 3. Wait until ADCAL=0
- * 4. The calibration factor can be read from bits 6:0 of ADC_DR.
- *
- * Source: A.7.1 ADC Calibration code example
- */
-adc_status_t adc_calibration() {
-  adc_status_t status;
-	/* (1) Ensure that ADEN = 0 */
-	if ((ADC1->CR & ADC_CR_ADEN) != 0) {
-		/* (2) Clear ADEN by setting ADDIS */
-		ADC1->CR |= ADC_CR_ADDIS;
-	}
-	status = adc_wait(&ADC1->CR, ADC_CR_ADEN, 0);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-	/* (3) Clear DMAEN */
-	ADC1->CFGR1 &= ~ADC_CFGR1_DMAEN;
-	/* (4) Launch the calibration by setting ADCAL */
-	ADC1->CR |= ADC_CR_ADCAL;
-	/* (5) Wait until ADCAL=0 */
-	status = adc_wait(&ADC1->CR, ADC_CR_ADCAL, 0);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-}
-
-/* 13.4.2 ADC on-off control (ADEN, ADDIS, ADRDY)
- *
- * At MCU power-up, the ADC is disabled and put in power-down mode (ADEN=0).
- * As shown in Figure 28, the ADC needs a stabilization time of tSTAB before it
- * starts converting accurately.
- *
- * Two control bits are used to enable or disable the ADC:
- * - Set ADEN=1 to enable the ADC. The ADRDY flag is set as soon as the ADC is
- *   ready for operation.
- * - Set ADDIS=1 to disable the ADC and put the ADC in power down mode. The ADEN
- *   and ADDIS bits are then automatically cleared by hardware as soon as the
- *   ADC is fully disabled.
- *
- * Conversion can then start either by setting ADSTART=1 (refer to Section 13.5:
- * Conversion on external trigger and trigger polarity (EXTSEL, EXTEN) on page
- * 238) or when an external trigger event occurs if triggers are enabled.
- *
- * Follow this procedure to enable the ADC:
- * 1. Clear the ADRDY bit in ADC_ISR register by programming this bit to 1.
- * 2. Set ADEN=1 in the ADC_CR register.
- * 3. Wait until ADRDY=1 in the ADC_ISR register and continue to write ADEN=1
- *    (ADRDY is set after the ADC startup time). This can be handled by
- *    interrupt if the interrupt is enabled by setting the ADRDYIE bit in the
- *    ADC_IER register.
- *
- * Source: A.7.2 ADC enable sequence code example
- */
-adc_status_t adc_enable() {
-  adc_status_t status;
-	/* (1) Ensure that ADRDY = 0 */
-	if ((ADC1->ISR & ADC_ISR_ADRDY) != 0)  {
-		/* (2) Clear ADRDY */
-		ADC1->ISR |= ADC_CR_ADRDY;
-	}
-	/* (3) Enable the ADC */
-	ADC1->CR |= ADC_CR_ADEN;
-	/* (4) Wait until ADC ready */
-	status = adc_wait(&ADC1->ISR, ADC_ISR_ADRDY, ADC_ISR_ADRDY);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-}
-
-/* Interrupt when then voltage on the ADC pin exits a sepcified range.
- *
- * Source: A.7.14 Analog watchdog code example
- */
-adc_status_t adc_watch_enable(adc_convert_t pin_to_convert,
-    uint16_t vrefint_low, uint16_t vrefint_high) {
-  /* (1) Select the continuous mode and configure the Analog watchdog to monitor
-   * only CH17 */
-  ADC1->CFGR1 |= ADC_CFGR1_CONT | ADC_CFGR1_AWDEN | ADC_CFGR1_AWDSGL;
-  /* (2) Define analog watchdog range : 16b-MSW is the high limit and 16b-LSW is
-   * the low limit */
-  ADC1->TR = (uint32_t)((uint32_t)vrefint_high << (uint32_t)16) &
-    (uint32_t)vrefint_low;
-  /* (3) Enable interrupt on Analog Watchdog */
-  ADC1->IER = ADC_IER_AWDIE;
 }
 
 /* Waits for the conversion to complete by polling the ISR to see if the End Of
@@ -327,9 +192,51 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
   /* Enable and set EXTI0 Interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPriority = 0x00;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
+
+
+
+
+
+
+
+
+  EXTI_InitTypeDef   EXTI_InitStructure;
+  GPIO_InitTypeDef   GPIO_InitStructure;
+
+  /* Enable GPIOA clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+
+  /* Configure PA0 pin as input floating */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
+  GPIO_Init(GPIOA, &GPIO_InitStructure);
+
+  /* Enable SYSCFG clock */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
+  /* Connect EXTI0 Line to PA0 pin */
+  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
+
+  /* Configure EXTI0 line */
+  EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
+  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
+  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
+  EXTI_Init(&EXTI_InitStructure);
+
+  /* Enable and set EXTI0 Interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Configure PA0 in interrupt mode */
+  // EXTI0_Config();
+  /* Simulate a falling edge applied on EXTI8 line */
+  // EXTI_GenerateSWInterrupt(EXTI_Line8);
 
   /* Start converting */
   status = adc_start_converting();
@@ -339,48 +246,78 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   return status;
 }
 
-adc_status_t adc_up(adc_status_t (*adc_set_adrdy_handler)()) {
+adc_status_t adc_up(gpio_pin_t gpio_pin,
+    adc_status_t (*adc_set_adrdy_handler)()) {
   ADC_InitTypeDef     ADC_InitStructure;
   GPIO_InitTypeDef    GPIO_InitStructure;
+  NVIC_InitTypeDef    NVIC_InitStructure;
 
   adc_conversion_complete = NULL;
   adc_adrdy_handler = adc_set_adrdy_handler;
 
-  /* GPIOA Periph clock enable */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-  /* Configure ADC Channel 0 as analog input */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  gpio_clock(gpio_pin);
 
   /* ADC1 Periph clock enable */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
-  /* Ensure HSI14 is powered and ready */
-  adc_start_hsi14();
-  /* ADCs DeInit */
+
+  /* Configure ADC Channel11 as analog input */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
+  GPIO_Init(GPIOC, &GPIO_InitStructure);
+
+  /* ADC1 DeInit */
   ADC_DeInit(ADC1);
+
   /* Initialize ADC structure */
   ADC_StructInit(&ADC_InitStructure);
-  /* Configure the ADC1 in continuous mode with a resolution equal to 12 bits  */
+
+  /* Configure the ADC1 in continuous mode withe a resolution equal to 12 bits */
   ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
-  ADC_InitStructure.ADC_ContinuousConvMode = DISABLE;
+  ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
   ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
   ADC_InitStructure.ADC_DataAlign = ADC_DataAlign_Right;
   ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
   ADC_Init(ADC1, &ADC_InitStructure);
 
-  /* Convert the ADC1 Channel 0 (PA0) with 239.5 Cycles as sampling time */
-  ADC_ChannelConfig(ADC1, ADC_Channel_0, ADC_SampleTime_239_5Cycles);
-  /* ADC Discontinuous mode, convert once then stop */
-  ADC_DiscModeCmd(ADC1, ENABLE);
-  /* ADC Calibration */
+  /* Convert the ADC1 Channel 11 with 239.5 Cycles as sampling time */
+  ADC_ChannelConfig(ADC1, ADC_Channel_11 , ADC_SampleTime_239_5Cycles);
+
+  /* Analog watchdog config ******************************************/
+  /* Configure the ADC Thresholds between 1.5V and 2.5V (1861, 3102) */
+  ADC_AnalogWatchdogThresholdsConfig(ADC1, 3102, 1861);
+
+  /* Enable the ADC1 single channel */
+  ADC_AnalogWatchdogSingleChannelCmd(ADC1, ENABLE);
+
+  ADC_OverrunModeCmd(ADC1, ENABLE);
+  /* Enable the ADC1 analog watchdog */
+  ADC_AnalogWatchdogCmd(ADC1, ENABLE);
+
+  /* Select a single ADC1 channel 11 */
+  ADC_AnalogWatchdogSingleChannelConfig(ADC1, ADC_AnalogWatchdog_Channel_11);
+
+  /* Enable AWD interrupt */
+  ADC_ITConfig(ADC1, ADC_IT_AWD, ENABLE);
+
+  /* Configure and enable ADC1 interrupt */
+  NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* Enable the ADC1 Calibration */
   ADC_GetCalibrationFactor(ADC1);
+
   /* Enable the ADC peripheral */
   ADC_Cmd(ADC1, ENABLE);
 
-  /* Interrupt when ready */
+  /* Wait the ADRDY flag */
+  // while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
   ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);
+
+  /* ADC1 regular Software Start Conv */
+  ADC_StartOfConversion(ADC1);
 
   // TODO perhaps use the adc_watch_enable function
   return ADC_OK;

@@ -28,6 +28,8 @@ SRCS=$(wildcard *.c) \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_adc.c \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_pwr.c \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_misc.c \
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_exti.c \
+		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_syscfg.c \
 		 libs/Libraries/STM32F0xx_StdPeriph_Driver/src/stm32f0xx_gpio.c #\
 		# hd44780.c
 OBJS=$(SRCS:.c=.o)
