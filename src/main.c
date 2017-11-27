@@ -12,8 +12,6 @@ struct {
   } adc;
 } flextimus_prime;
 
-static int blink_rate;
-
 void assert_failed(uint8_t* file, uint32_t line) {
   while (1) {}
 }
@@ -32,7 +30,7 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
 adc_status_t adc_up_callback() {
   adc_status_t adc_status;
   gpio_on(PAUSE_LED);
-  adc_status = adc_convert_async(ADC_CONVERT_PA0, adc_convert_async_callback);
+  adc_status = adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
   if (ADC_ERROR(adc_status)) {
     return adc_status;
   }
@@ -41,8 +39,6 @@ adc_status_t adc_up_callback() {
 
 int main(void) {
   adc_status_t adc_status;
-
-  blink_rate = 200000;
 
   gpio_up(PAUSE_LED);
 
@@ -65,11 +61,7 @@ int main(void) {
   HD44780_Clear();*/
 
 	while (1) {
-    gpio_on(PAUSE_LED);
-    delay(blink_rate);
-    gpio_off(PAUSE_LED);
-    delay(blink_rate);
-    // PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
+    PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
 	}
 
   gpio_down(PAUSE_LED);

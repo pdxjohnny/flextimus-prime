@@ -33,10 +33,6 @@ extern adc_status_t ADC_INVALID_CONVERT_PIN;
 extern adc_status_t ADC_CONVERSION_IN_PROGRESS;
 extern adc_status_t ADC_NEED_CONVERSION_CALLBACK;
 
-typedef enum {
-  ADC_CONVERT_PA0,
-} adc_convert_t;
-
 typedef adc_status_t adc_convertion_result;
 
 extern adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
@@ -44,14 +40,14 @@ extern adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
 adc_status_t adc_calibration();
 adc_status_t adc_enable();
 adc_status_t adc_read();
-adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert);
-adc_status_t adc_watch_enable(adc_convert_t pin_to_convert,
+adc_status_t adc_select_conversion_pin(gpio_pin_t pin_to_convert);
+adc_status_t adc_watch_enable(gpio_pin_t pin_to_convert,
     uint16_t vrefint_low, uint16_t vrefint_high);
 adc_status_t adc_up(gpio_pin_t gpio_pin,
     adc_status_t (*adc_conversion_complete)(void));
 adc_status_t adc_down();
-adc_status_t adc_convert(adc_convert_t pin_to_convert);
-adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
+adc_status_t adc_convert(gpio_pin_t pin_to_convert);
+adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
     adc_status_t (*adc_conversion_complete)(adc_convertion_result result));
 
 void adc_handler();

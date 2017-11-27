@@ -55,24 +55,6 @@ adc_status_t adc_wait(__IO uint32_t *reg, uint32_t and_with,
 	return ADC_OK;
 }
 
-/* Chooses which pin on the STM32F042 we want to convert from using the ADC.
- * Returns
- *  ADC_OK
- *    Valid pin has been selected for conversion
- *  ADC_INVALID_CONVERT_PIN
- *    Caller passed in an invalid pin
- */
-adc_status_t adc_select_conversion_pin(adc_convert_t pin_to_convert) {
-  switch (pin_to_convert) {
-    case ADC_CONVERT_PA0:
-      ADC1->CHSELR |= ADC_CHSELR_CHSEL0;
-      return ADC_OK;
-    default:
-      break;
-  }
-  return ADC_INVALID_CONVERT_PIN;
-}
-
 /* Waits for the conversion to complete by polling the ISR to see if the End Of
  * Conversion (EOC) bit is set. Use ADC_VOLTS and ADC_MILLIVOLTS with result.
  */
@@ -102,33 +84,8 @@ static adc_status_t adc_start_converting() {
   return ADC_OK;
 }
 
-/* 13.4.7 Single conversion mode (CONT=0)
- *
- * In Single conversion mode, the ADC performs a single sequence of conversions,
- * converting all the channels once. This mode is selected when CONT=0 in the
- * ADC_CFGR1 register.
- *
- * Conversion is started by either:
- * - Setting the ADSTART bit in the ADC_CR register
- * - Hardware trigger event
- *
- * Inside the sequence, after each conversion is complete:
- * - The converted data are stored in the 16-bit ADC_DR register
- * - The EOC (end of conversion) flag is set
- * - An interrupt is generated if the EOCIE bit is set
- *
- * After the sequence of conversions is complete:
- * - The EOSEQ (end of sequence) flag is set
- * - An interrupt is generated if the EOSEQIE bit is set
- *
- * Then the ADC stops until a new external trigger event occurs or the ADSTART
- * bit is set again.
- *
- * Note: To convert a single channel, program a sequence with a length of 1.
- *
- * Source: A.7.5 Single conversion sequence code example - Software trigger
- */
-adc_status_t adc_convert(adc_convert_t pin_to_convert) {
+/* Convert using the ADC and poll waiting for it to be done. */
+adc_status_t adc_convert(gpio_pin_t pin_to_convert) {
   adc_status_t status;
   /* Start converting if we are not already converting */
   status = adc_start_converting();
@@ -162,7 +119,7 @@ void adc_handler() {
  *
  * Source: A.7.13 Auto Off and wait mode sequence code example
  */
-adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
+adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
     adc_status_t (*set_adc_conversion_complete)(adc_convertion_result result)) {
   adc_status_t status;
   NVIC_InitTypeDef NVIC_InitStructure;
@@ -197,53 +154,33 @@ adc_status_t adc_convert_async(adc_convert_t pin_to_convert,
   NVIC_Init(&NVIC_InitStructure);
 
 
-
-
-
-
-
-
-  EXTI_InitTypeDef   EXTI_InitStructure;
-  GPIO_InitTypeDef   GPIO_InitStructure;
-
-  /* Enable GPIOA clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-
-  /* Configure PA0 pin as input floating */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
-  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
-
-  /* Enable SYSCFG clock */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
-  /* Connect EXTI0 Line to PA0 pin */
-  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
-
-  /* Configure EXTI0 line */
-  EXTI_InitStructure.EXTI_Line = EXTI_Line0;
-  EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
-  EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
-  EXTI_InitStructure.EXTI_LineCmd = ENABLE;
-  EXTI_Init(&EXTI_InitStructure);
-
-  /* Enable and set EXTI0 Interrupt */
-  NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
-
-  /* Configure PA0 in interrupt mode */
-  // EXTI0_Config();
-  /* Simulate a falling edge applied on EXTI8 line */
-  // EXTI_GenerateSWInterrupt(EXTI_Line8);
-
   /* Start converting */
   status = adc_start_converting();
   if (ADC_ERROR(status)) {
     return status;
   }
   return status;
+}
+
+adc_status_t adc_awd_config(int start, int stop) {
+  /* TODO Configure the ADC Thresholds between whatever the config button sets
+   * them to. So basically call this  */
+  // ADC_AnalogWatchdogThresholdsConfig(ADC1, 3102, 1861);
+  ADC_AnalogWatchdogThresholdsConfig(ADC1, start, stop);
+
+  /* Enable the ADC1 single channel */
+  ADC_AnalogWatchdogSingleChannelCmd(ADC1, ENABLE);
+
+  ADC_OverrunModeCmd(ADC1, ENABLE);
+  /* Enable the ADC1 analog watchdog */
+  ADC_AnalogWatchdogCmd(ADC1, ENABLE);
+
+  /* Select a single ADC1 from proper channel
+   * TODO select correct channel (I don't think we are using 11) */
+  ADC_AnalogWatchdogSingleChannelConfig(ADC1, ADC_AnalogWatchdog_Channel_11);
+
+  /* Enable AWD interrupt */
+  ADC_ITConfig(ADC1, ADC_IT_AWD, ENABLE);
 }
 
 adc_status_t adc_up(gpio_pin_t gpio_pin,
@@ -261,10 +198,10 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
   /* Configure ADC Channel11 as analog input */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+  GPIO_InitStructure.GPIO_Pin = gpio_pin & GPIO_PIN_MASK;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
-  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL ;
-  GPIO_Init(GPIOC, &GPIO_InitStructure);
+  GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
+  GPIO_Init(gpio_perf(gpio_pin), &GPIO_InitStructure);
 
   /* ADC1 DeInit */
   ADC_DeInit(ADC1);
@@ -272,7 +209,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   /* Initialize ADC structure */
   ADC_StructInit(&ADC_InitStructure);
 
-  /* Configure the ADC1 in continuous mode withe a resolution equal to 12 bits */
+  /* Configure ADC1 in continuous mode with a resolution of 12 bits */
   ADC_InitStructure.ADC_Resolution = ADC_Resolution_12b;
   ADC_InitStructure.ADC_ContinuousConvMode = ENABLE;
   ADC_InitStructure.ADC_ExternalTrigConvEdge = ADC_ExternalTrigConvEdge_None;
@@ -280,25 +217,12 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
   ADC_Init(ADC1, &ADC_InitStructure);
 
-  /* Convert the ADC1 Channel 11 with 239.5 Cycles as sampling time */
-  ADC_ChannelConfig(ADC1, ADC_Channel_11 , ADC_SampleTime_239_5Cycles);
+  /* Convert the ADC1 Channel 11 with 239.5 Cycles as sampling time
+   * TODO change to correct channel based off of gpio_pins. */
+  ADC_ChannelConfig(ADC1, ADC_Channel_11, ADC_SampleTime_239_5Cycles);
 
-  /* Analog watchdog config ******************************************/
-  /* Configure the ADC Thresholds between 1.5V and 2.5V (1861, 3102) */
-  ADC_AnalogWatchdogThresholdsConfig(ADC1, 3102, 1861);
-
-  /* Enable the ADC1 single channel */
-  ADC_AnalogWatchdogSingleChannelCmd(ADC1, ENABLE);
-
-  ADC_OverrunModeCmd(ADC1, ENABLE);
-  /* Enable the ADC1 analog watchdog */
-  ADC_AnalogWatchdogCmd(ADC1, ENABLE);
-
-  /* Select a single ADC1 channel 11 */
-  ADC_AnalogWatchdogSingleChannelConfig(ADC1, ADC_AnalogWatchdog_Channel_11);
-
-  /* Enable AWD interrupt */
-  ADC_ITConfig(ADC1, ADC_IT_AWD, ENABLE);
+  /* Enable ADC ready interrupt */
+  ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);
 
   /* Configure and enable ADC1 interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
@@ -313,32 +237,25 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   ADC_Cmd(ADC1, ENABLE);
 
   /* Wait the ADRDY flag */
-  // while(!ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
-  ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);
-
-  /* ADC1 regular Software Start Conv */
-  ADC_StartOfConversion(ADC1);
+  for (int i = 0; !ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY); ++i) {
+    if (i > ADC_TIMEOUT_TICKS) {
+      return ADC_TIMEOUT;
+    }
+  }
 
   // TODO perhaps use the adc_watch_enable function
   return ADC_OK;
 }
 
 adc_status_t adc_down() {
-  adc_status_t status;
-	/* A.7.3 ADC disable sequence code example */
-	/* (1) Stop any ongoing conversion */
-	ADC1->CR |= ADC_CR_ADSTP;
-	/* (2) Wait until ADSTP is reset by hardware i.e. conversion is stopped */
-	status = adc_wait(&ADC1->CR, ADC_CR_ADSTP, 0);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-	/* (3) Disable the ADC */
-	ADC1->CR |= ADC_CR_ADDIS;
-	/* (4) Wait until the ADC is fully disabled */
-	status = adc_wait(&ADC1->CR, ADC_CR_ADEN, 0);
-  if (ADC_ERROR(status)) {
-    return status;
-  }
-  return ADC_OK;
+  NVIC_InitTypeDef    NVIC_InitStructure;
+
+  /* ADC1 Interrupts disable */
+  NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+  NVIC_Init(&NVIC_InitStructure);
+
+  /* ADC1 Periph clock disable */
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
 }

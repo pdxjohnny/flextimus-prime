@@ -1,7 +1,8 @@
+#include <util.h>
 #include <gpio.h>
 #include "main.h"
 
-static GPIO_TypeDef* gpio_perf(gpio_pin_t gpio_pin) {
+void* gpio_perf(gpio_pin_t gpio_pin) {
   if (gpio_pin & GPIO_A == GPIO_A) {
     return GPIOA;
   } else if (gpio_pin & GPIO_B == GPIO_B) {
@@ -37,34 +38,43 @@ void gpio_up(gpio_pin_t gpio_pin) {
 }
 
 void gpio_on(gpio_pin_t gpio_pin) {
-  gpio_perf(gpio_pin)->BSRR = gpio_pin & GPIO_PIN_MASK;
+  ((GPIO_TypeDef *)gpio_perf(gpio_pin))->BSRR = gpio_pin & GPIO_PIN_MASK;
 }
 
 void gpio_off(gpio_pin_t gpio_pin) {
-  gpio_perf(gpio_pin)->BRR = gpio_pin & GPIO_PIN_MASK;
+  ((GPIO_TypeDef *)gpio_perf(gpio_pin))->BRR = gpio_pin & GPIO_PIN_MASK;
 }
 
-void gpio_input(void) {
+void gpio_input(gpio_pin_t gpio_pin) {
   EXTI_InitTypeDef   EXTI_InitStructure;
   GPIO_InitTypeDef   GPIO_InitStructure;
   NVIC_InitTypeDef   NVIC_InitStructure;
 
-  /* Enable GPIOA clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+  gpio_clock(gpio_pin);
 
-  /* Configure PA0 pin as input floating */
-  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_0;
+  /* Configure gpio_pin as input floating */
+  GPIO_InitStructure.GPIO_Pin = gpio_pin & GPIO_PIN_MASK;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_DOWN;
-  GPIO_Init(GPIOA, &GPIO_InitStructure);
+  GPIO_Init((GPIO_TypeDef *)gpio_perf(gpio_pin), &GPIO_InitStructure);
 
   /* Enable SYSCFG clock */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
-  /* Connect EXTI0 Line to PA0 pin */
-  SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, EXTI_PinSource0);
 
-  /* Configure EXTI0 line */
-  EXTI_InitStructure.EXTI_Line = EXTI_Line0;
+  /* Connect EXTI0 Line to PA0 pin */
+  if (gpio_pin & GPIO_A == GPIO_A) {
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,
+        bit_index(gpio_pin & GPIO_PIN_MASK));
+  } else if (gpio_pin & GPIO_B == GPIO_B) {
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB,
+        bit_index(gpio_pin & GPIO_PIN_MASK));
+  } else if (gpio_pin & GPIO_C == GPIO_C) {
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC,
+        bit_index(gpio_pin & GPIO_PIN_MASK));
+  }
+
+  /* Configure the button from this line */
+  EXTI_InitStructure.EXTI_Line = gpio_pin & GPIO_PIN_MASK;
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
@@ -76,9 +86,7 @@ void gpio_input(void) {
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
-  /* Configure PA0 in interrupt mode */
-  // EXTI0_Config();
-  /* Simulate a falling edge applied on EXTI8 line */
+  /* Simulate a falling edge */
   // EXTI_GenerateSWInterrupt(EXTI_Line8);
 }
 

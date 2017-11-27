@@ -19,6 +19,7 @@ typedef uint32_t gpio_pin_t;
 #define GPIO_B3           (GPIO_B | GPIO_Pin_3)
 #define GPIO_B4           (GPIO_B | GPIO_Pin_4)
 
+void* gpio_perf(gpio_pin_t gpio_pin);
 void gpio_clock(gpio_pin_t gpio_pin);
 void gpio_up(gpio_pin_t gpio_pin);
 void gpio_down(gpio_pin_t gpio_pin);
