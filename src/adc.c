@@ -40,7 +40,6 @@ adc_status_t adc_success(adc_status_data_t data) {
   return status;
 }
 
-
 /* Poll bit with timeout. If we are in an interrupt we only poll once. */
 adc_status_t adc_wait(__IO uint32_t *reg, uint32_t and_with,
     uint32_t what_it_should_be) {
@@ -61,11 +60,11 @@ adc_status_t adc_wait(__IO uint32_t *reg, uint32_t and_with,
 adc_status_t adc_read() {
   adc_status_t status;
   /* Wait end of conversion */
-	// status = adc_wait(&ADC1->ISR, ADC_ISR_EOC, ADC_ISR_EOC);
-  // if (ADC_ERROR(status)) {
-  //   return status;
-  // }
-  while(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET) {};
+  for (unsigned int i = 0; ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET; ++i) {
+    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {
+      return ADC_TIMEOUT;
+    }
+  };
   /* Get ADC1 converted data and compute the voltage */
   return adc_success((ADC_GetConversionValue(ADC1) * 3300) / 0xFFF);
 }
@@ -153,7 +152,6 @@ adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
-
   /* Start converting */
   status = adc_start_converting();
   if (ADC_ERROR(status)) {
@@ -183,14 +181,12 @@ adc_status_t adc_awd_config(int start, int stop) {
   ADC_ITConfig(ADC1, ADC_IT_AWD, ENABLE);
 }
 
-adc_status_t adc_up(gpio_pin_t gpio_pin,
-    adc_status_t (*adc_set_adrdy_handler)()) {
+adc_status_t adc_up(gpio_pin_t gpio_pin) {
   ADC_InitTypeDef     ADC_InitStructure;
   GPIO_InitTypeDef    GPIO_InitStructure;
   NVIC_InitTypeDef    NVIC_InitStructure;
 
   adc_conversion_complete = NULL;
-  adc_adrdy_handler = adc_set_adrdy_handler;
 
   gpio_clock(gpio_pin);
 
@@ -237,8 +233,8 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   ADC_Cmd(ADC1, ENABLE);
 
   /* Wait the ADRDY flag */
-  for (int i = 0; !ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY); ++i) {
-    if (i > ADC_TIMEOUT_TICKS) {
+  for (unsigned int i = 0; !ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY); ++i) {
+    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {
       return ADC_TIMEOUT;
     }
   }

@@ -4,6 +4,7 @@
 #include "config.h"
 #include "hd44780.h"
 
+/* One global to rule them all */
 struct {
   bool paused;
   struct {
@@ -20,20 +21,11 @@ void delay(int dly) {
   while (dly--);
 }
 
+/* Called when the ADC finishes a conversion */
 adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
   flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
   flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
   gpio_off(PAUSE_LED);
-  return ADC_OK;
-}
-
-adc_status_t adc_up_callback() {
-  adc_status_t adc_status;
-  gpio_on(PAUSE_LED);
-  adc_status = adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
-  if (ADC_ERROR(adc_status)) {
-    return adc_status;
-  }
   return ADC_OK;
 }
 
@@ -42,12 +34,12 @@ int main(void) {
 
   gpio_up(PAUSE_LED);
 
-  adc_status = adc_up(FLEX_SENSOR, adc_up_callback);
+  adc_status = adc_up(FLEX_SENSOR);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
 
-  __enable_irq();
+  // gpio_on(PAUSE_LED);
 
   //LCD Test code. NOTE: WILL HANG FOREVER IF YOU DON'T HAVE AN LCD ATTACHED
   //TODO_MAX: Update documentation with physical set up. Replicate final schematic set up.
@@ -60,8 +52,15 @@ int main(void) {
   delay(5000000);
   HD44780_Clear();*/
 
+  __enable_irq();
+
+  adc_status = adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
+
 	while (1) {
-    PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
+    // PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
 	}
 
   gpio_down(PAUSE_LED);

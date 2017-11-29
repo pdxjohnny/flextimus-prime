@@ -27,6 +27,10 @@ typedef struct {
 } adc_status_t;
 
 #define ADC_ERROR(status)    (status.code != ADC_STATUS_OK)
+#define ADC_FATAL(status, func)    status = func; \
+  if (ADC_ERROR(status)) {\
+  assert_failed(__FILE__, __LINE__); \
+}
 extern adc_status_t ADC_OK;
 extern adc_status_t ADC_TIMEOUT;
 extern adc_status_t ADC_INVALID_CONVERT_PIN;
@@ -43,8 +47,7 @@ adc_status_t adc_read();
 adc_status_t adc_select_conversion_pin(gpio_pin_t pin_to_convert);
 adc_status_t adc_watch_enable(gpio_pin_t pin_to_convert,
     uint16_t vrefint_low, uint16_t vrefint_high);
-adc_status_t adc_up(gpio_pin_t gpio_pin,
-    adc_status_t (*adc_conversion_complete)(void));
+adc_status_t adc_up(gpio_pin_t gpio_pin);
 adc_status_t adc_down();
 adc_status_t adc_convert(gpio_pin_t pin_to_convert);
 adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,

@@ -3,22 +3,25 @@
 #include "main.h"
 
 void* gpio_perf(gpio_pin_t gpio_pin) {
-  if (gpio_pin & GPIO_A == GPIO_A) {
-    return GPIOA;
-  } else if (gpio_pin & GPIO_B == GPIO_B) {
-    return GPIOB;
-  } else if (gpio_pin & GPIO_C == GPIO_C) {
-    return GPIOC;
+  void *which_gpio = NULL;
+  if (gpio_pin & GPIO_A) {
+    which_gpio = GPIOA;
+  } else if (gpio_pin & GPIO_B) {
+    which_gpio = GPIOB;
+  } else if (gpio_pin & GPIO_C) {
+    which_gpio = GPIOC;
   }
+  assert_param(IS_GPIO_ALL_PERIPH(which_gpio));
+  return which_gpio;
 }
 
 void gpio_clock(gpio_pin_t gpio_pin) {
   /* RCC peripheral clock enable */
-  if (gpio_pin & GPIO_A == GPIO_A) {
+  if (gpio_pin & GPIO_A) {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
-  } else if (gpio_pin & GPIO_B == GPIO_B) {
+  } else if (gpio_pin & GPIO_B) {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
-  } else if (gpio_pin & GPIO_C == GPIO_C) {
+  } else if (gpio_pin & GPIO_C) {
     RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
   }
 }
@@ -62,13 +65,13 @@ void gpio_input(gpio_pin_t gpio_pin) {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_SYSCFG, ENABLE);
 
   /* Connect EXTI0 Line to PA0 pin */
-  if (gpio_pin & GPIO_A == GPIO_A) {
+  if (gpio_pin & GPIO_A) {
     SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,
         bit_index(gpio_pin & GPIO_PIN_MASK));
-  } else if (gpio_pin & GPIO_B == GPIO_B) {
+  } else if (gpio_pin & GPIO_B) {
     SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB,
         bit_index(gpio_pin & GPIO_PIN_MASK));
-  } else if (gpio_pin & GPIO_C == GPIO_C) {
+  } else if (gpio_pin & GPIO_C) {
     SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC,
         bit_index(gpio_pin & GPIO_PIN_MASK));
   }
@@ -81,6 +84,7 @@ void gpio_input(gpio_pin_t gpio_pin) {
   EXTI_Init(&EXTI_InitStructure);
 
   /* Enable and set EXTI0 Interrupt */
+  /* TODO Is EXTI0_1_IRQn correct? */
   NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
