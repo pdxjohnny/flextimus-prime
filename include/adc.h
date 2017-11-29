@@ -8,6 +8,15 @@
 #define ADC_TIMEOUT_TICKS   100000
 #endif /* ADC_TIMEOUT_TICKS */
 
+/* If we are in an interrupt and have checked once already then we need to
+ * exit with a timeout to allow other interrupts to be serviced as quickly
+ * as possible. */
+#define ADC_WITH_TIMEOUT(do_with_timeout)\
+  for (unsigned int i = 0; do_with_timeout; ++i) {\
+    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {\
+      return ADC_TIMEOUT;\
+    }\
+  }
 #define ADC_VOLTS(X)        ((X) / 1000)
 #define ADC_MILLIVOLTS(X)   (((X) % 1000) / 100)
 

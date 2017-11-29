@@ -40,31 +40,13 @@ adc_status_t adc_success(adc_status_data_t data) {
   return status;
 }
 
-/* Poll bit with timeout. If we are in an interrupt we only poll once. */
-adc_status_t adc_wait(__IO uint32_t *reg, uint32_t and_with,
-    uint32_t what_it_should_be) {
-  for (unsigned int i = 0; (*reg & and_with) != what_it_should_be; i++) {
-    /* If we are in an interrupt and have checked once already then we need to
-     * exit with a timeout to allow other interrupts to be serviced as quickly
-     * as possible. */
-    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {
-      return ADC_TIMEOUT;
-    }
-	}
-	return ADC_OK;
-}
-
 /* Waits for the conversion to complete by polling the ISR to see if the End Of
  * Conversion (EOC) bit is set. Use ADC_VOLTS and ADC_MILLIVOLTS with result.
  */
 adc_status_t adc_read() {
   adc_status_t status;
   /* Wait end of conversion */
-  for (unsigned int i = 0; ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET; ++i) {
-    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {
-      return ADC_TIMEOUT;
-    }
-  };
+  ADC_WITH_TIMEOUT(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
   /* Get ADC1 converted data and compute the voltage */
   return adc_success((ADC_GetConversionValue(ADC1) * 3300) / 0xFFF);
 }
@@ -121,7 +103,6 @@ void adc_handler() {
 adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
     adc_status_t (*set_adc_conversion_complete)(adc_convertion_result result)) {
   adc_status_t status;
-  NVIC_InitTypeDef NVIC_InitStructure;
   /* Make sure that we have a conversion callback */
   if (set_adc_conversion_complete == NULL) {
     return ADC_NEED_CONVERSION_CALLBACK;
@@ -146,11 +127,6 @@ adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
   ADC_WaitModeCmd(ADC1, ENABLE);
   /* (4) Enable interrupts on EOC (End Of Conversion) */
   ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
-  /* Enable and set EXTI0 Interrupt */
-  NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
-  NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-  NVIC_Init(&NVIC_InitStructure);
 
   /* Start converting */
   status = adc_start_converting();
@@ -193,7 +169,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin) {
   /* ADC1 Periph clock enable */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
 
-  /* Configure ADC Channel11 as analog input */
+  /* Configure ADC Channel for the requested GPIO as analog input */
   GPIO_InitStructure.GPIO_Pin = gpio_pin & GPIO_PIN_MASK;
   GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AN;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
@@ -213,7 +189,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin) {
   ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
   ADC_Init(ADC1, &ADC_InitStructure);
 
-  /* Convert the ADC1 Channel 11 with 239.5 Cycles as sampling time
+  /* Convert the ADC1 Channel for the reuested GPIO with 239.5 cycle sample time
    * TODO change to correct channel based off of gpio_pins. */
   ADC_ChannelConfig(ADC1, ADC_Channel_11, ADC_SampleTime_239_5Cycles);
 
@@ -233,13 +209,8 @@ adc_status_t adc_up(gpio_pin_t gpio_pin) {
   ADC_Cmd(ADC1, ENABLE);
 
   /* Wait the ADRDY flag */
-  for (unsigned int i = 0; !ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY); ++i) {
-    if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {
-      return ADC_TIMEOUT;
-    }
-  }
+  ADC_WITH_TIMEOUT(ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
 
-  // TODO perhaps use the adc_watch_enable function
   return ADC_OK;
 }
 
