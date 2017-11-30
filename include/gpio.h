@@ -26,6 +26,7 @@ void gpio_up(gpio_pin_t gpio_pin);
 void gpio_down(gpio_pin_t gpio_pin);
 void gpio_on(gpio_pin_t gpio_pin);
 void gpio_off(gpio_pin_t gpio_pin);
+void gpio_input(gpio_pin_t gpio_pin);
 int gpio_asserted(gpio_pin_t gpio_pin);
 
 #endif /* _GPIO_H_ */

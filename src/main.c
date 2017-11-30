@@ -22,6 +22,7 @@ typedef enum {
 /* One global to rule them all */
 struct {
   bool paused;
+  bool configuring;
   struct {
     uint32_t volts;
     uint32_t millivolts;
@@ -58,6 +59,8 @@ adc_status_t adc_adrdy_callback(adc_status_t adc_status) {
 }
 
 void flextimus_prime_init() {
+  flextimus_prime.paused = false;
+  flextimus_prime.configuring = false;
   flextimus_prime.adc.state = ADC_IDLE;
 }
 
@@ -68,13 +71,16 @@ int main(void) {
   __enable_irq();
 
   gpio_up(PAUSE_LED);
+  gpio_up(CONFIG_LED);
 
   adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
 
-  // gpio_on(PAUSE_LED);
+  gpio_input(PAUSE_BUTTON);
+
+  EXTI_GenerateSWInterrupt(EXTI_Line3);
 
   //LCD Test code. NOTE: WILL HANG FOREVER IF YOU DON'T HAVE AN LCD ATTACHED
   //TODO_MAX: Update documentation with physical set up. Replicate final schematic set up.
@@ -100,6 +106,7 @@ int main(void) {
   }
 
   gpio_down(PAUSE_LED);
+  gpio_down(CONFIG_LED);
 
   adc_status = adc_down(FLEX_SENSOR);
   if (ADC_ERROR(adc_status)) {
@@ -125,11 +132,11 @@ void flextimus_prime_pause_pressed() {
 
 void flextimus_prime_config_pressed() {
   if (flextimus_prime.paused == 0) {
-    flextimus_prime.paused = true;
-    gpio_on(PAUSE_LED);
+    flextimus_prime.configuring = true;
+    gpio_on(CONFIG_LED);
   } else {
-    flextimus_prime.paused = false;
-    gpio_off(PAUSE_LED);
+    flextimus_prime.configuring = false;
+    gpio_off(CONFIG_LED);
   }
 }
 

@@ -59,7 +59,7 @@ void gpio_input(gpio_pin_t gpio_pin) {
   EXTI_InitTypeDef   EXTI_InitStructure;
   GPIO_InitTypeDef   GPIO_InitStructure;
   NVIC_InitTypeDef   NVIC_InitStructure;
-  uint16_t gpio_pin_number = gpio_pin & GPIO_PIN_MASK;
+  uint16_t gpio_pin_number = bit_index(gpio_pin & GPIO_PIN_MASK);
 
   gpio_clock(gpio_pin, ENABLE);
 
@@ -74,15 +74,15 @@ void gpio_input(gpio_pin_t gpio_pin) {
 
   /* Connect EXTI0 Line to PA0 pin */
   if (gpio_pin & GPIO_A) {
-    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, bit_index(gpio_pin_number));
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, gpio_pin_number);
   } else if (gpio_pin & GPIO_B) {
-    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, bit_index(gpio_pin_number));
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, gpio_pin_number);
   } else if (gpio_pin & GPIO_C) {
-    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, bit_index(gpio_pin_number));
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, gpio_pin_number);
   }
 
   /* Configure the button from this line */
-  EXTI_InitStructure.EXTI_Line = gpio_pin_number;
+  EXTI_InitStructure.EXTI_Line = gpio_pin & GPIO_PIN_MASK;
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
