@@ -2,6 +2,7 @@
 #include <gpio.h>
 #include <flextimus.h>
 
+static bool adc_converting_continous;
 static bool adc_within_interrupt;
 static bool adc_converting;
 
@@ -96,10 +97,12 @@ void adc_handler() {
       adc_conversion_complete != NULL) {
     ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
     adc_conversion_complete(adc_read());
-    /* ADC1 regular Software Stop Conv */
-    ADC_StopOfConversion(ADC1);
-    /* Disable interrupts on EOC (End Of Conversion) */
-    ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+    if (!adc_converting_continous) {
+      /* ADC1 regular Software Stop Conv */
+      ADC_StopOfConversion(ADC1);
+      /* Disable interrupts on EOC (End Of Conversion) */
+      ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+    }
   } else if (ADC_GetITStatus(ADC1, ADC_IT_EOSEQ) == SET) {
     ADC_ClearITPendingBit(ADC1, ADC_IT_EOSEQ);
   } else if (ADC_GetITStatus(ADC1, ADC_IT_AWD) == SET) {
@@ -254,4 +257,12 @@ adc_status_t adc_down(gpio_pin_t gpio_pin) {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
 
   return ADC_OK;
+}
+
+adc_status_t adc_start_continuous_conversion() {
+  adc_converting_continous = true;
+}
+
+adc_status_t adc_stop_continuous_conversion() {
+  adc_converting_continous = false;
 }
