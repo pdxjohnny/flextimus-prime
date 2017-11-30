@@ -17,9 +17,10 @@
       return ADC_TIMEOUT;\
     }\
   }
-#define ADC_VOLTS(X)                  ((X) / 1000)
-#define ADC_MILLIVOLTS(X)             (((X) % 1000) / 100)
-#define ADC_GPIO_CHSEL(X)             (1 << ((X) & GPIO_PIN_MASK))
+
+#define __ADC_CONV(X)                 (((X) * 3300) / 0xFFF)
+#define ADC_VOLTS(X)                  (__ADC_CONV(X) / 1000)
+#define ADC_MILLIVOLTS(X)             ((__ADC_CONV(X) % 1000) / 100)
 #define ADC_GPIO_TO_CHANNEL(X)        (((X) & GPIO_PIN_MASK) << 26)
 
 typedef enum {
@@ -62,6 +63,8 @@ adc_status_t adc_awd_config(gpio_pin_t gpio_pin, int start, int stop,
 adc_status_t adc_up(gpio_pin_t gpio_pin,
     adc_status_t (*set_adc_adrdy_handler)());
 adc_status_t adc_down(gpio_pin_t gpio_pin);
+adc_status_t adc_stop_continuous_conversion();
+adc_status_t adc_start_continuous_conversion();
 
 void adc_handler();
 

@@ -2,6 +2,7 @@
 #include <gpio.h>
 #include <flextimus.h>
 
+static bool adc_converting_continous;
 static bool adc_within_interrupt;
 static bool adc_converting;
 
@@ -49,7 +50,7 @@ adc_status_t adc_read() {
   /* Wait end of conversion */
   ADC_WITH_TIMEOUT(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
   /* Get ADC1 converted data and compute the voltage */
-  return adc_success((ADC_GetConversionValue(ADC1) * 3300) / 0xFFF);
+  return adc_success(ADC_GetConversionValue(ADC1));
 }
 
 /* Tell the other functions through the global variable `adc_converting` that we
@@ -96,10 +97,12 @@ void adc_handler() {
       adc_conversion_complete != NULL) {
     ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
     adc_conversion_complete(adc_read());
-    /* ADC1 regular Software Stop Conv */
-    ADC_StopOfConversion(ADC1);
-    /* Disable interrupts on EOC (End Of Conversion) */
-    ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+    if (!adc_converting_continous) {
+      /* ADC1 regular Software Stop Conv */
+      ADC_StopOfConversion(ADC1);
+      /* Disable interrupts on EOC (End Of Conversion) */
+      ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+    }
   } else if (ADC_GetITStatus(ADC1, ADC_IT_EOSEQ) == SET) {
     ADC_ClearITPendingBit(ADC1, ADC_IT_EOSEQ);
   } else if (ADC_GetITStatus(ADC1, ADC_IT_AWD) == SET) {
@@ -186,6 +189,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   GPIO_InitTypeDef    GPIO_InitStructure;
   NVIC_InitTypeDef    NVIC_InitStructure;
 
+  adc_converting_continous = false;
   adc_conversion_complete = NULL;
   adc_adrdy_handler = set_adc_adrdy_handler;
   assert_param(adc_adrdy_handler);
@@ -216,10 +220,8 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
   ADC_Init(ADC1, &ADC_InitStructure);
 
-  /* Convert the ADC1 Channel for the reuested GPIO with 239.5 cycle sample time
-   * TODO change to correct channel based off of gpio_pins. */
-  ADC_ChannelConfig(ADC1, ADC_GPIO_CHSEL(gpio_pin),
-      ADC_SampleTime_239_5Cycles);
+  /* Configure ADC1 Channel for the requested GPIO with 239.5 cycle sample */
+  ADC_ChannelConfig(ADC1, gpio_pin & GPIO_PIN_MASK, ADC_SampleTime_239_5Cycles);
 
   /* Enable ADC ready interrupt */
   ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);
@@ -255,4 +257,12 @@ adc_status_t adc_down(gpio_pin_t gpio_pin) {
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
 
   return ADC_OK;
+}
+
+adc_status_t adc_start_continuous_conversion() {
+  adc_converting_continous = true;
+}
+
+adc_status_t adc_stop_continuous_conversion() {
+  adc_converting_continous = false;
 }

@@ -22,7 +22,10 @@ typedef enum {
 /* One global to rule them all */
 struct {
   bool paused;
+  bool configuring;
   struct {
+    uint32_t max;
+    uint32_t min;
     uint32_t volts;
     uint32_t millivolts;
     adc_state_t state;
@@ -42,22 +45,33 @@ void delay(int dly) {
 adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
   flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
   flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
-  gpio_off(PAUSE_LED);
-  flextimus_prime.state = FLEXTIMUS_PRIME_OFF;
+  if (adc_status.data > flextimus_prime.adc.max) {
+    flextimus_prime.adc.max = adc_status.data;
+  } else if (adc_status.data < flextimus_prime.adc.min) {
+    flextimus_prime.adc.min = adc_status.data;
+  }
   return ADC_OK;
 }
 
 /* Called when the ADC is ready */
-adc_status_t adc_adrdy_callback(adc_status_t adc_status) {
-  adc_status = adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
-  if (ADC_ERROR(adc_status)) {
-    assert_failed(__FILE__, __LINE__);
-  }
-
+adc_status_t adc_adrdy_callback() {
+  flextimus_prime.adc.state = ADC_READY;
   return ADC_OK;
 }
 
+adc_status_t adc_awd_callback() {
+  /* TODO trigger buzzer, LCD, or something */
+  return ADC_OK;
+}
+
+void flextimus_prime_default_bounds() {
+  flextimus_prime.adc.min = 2000;
+  flextimus_prime.adc.max = 2000;
+}
+
 void flextimus_prime_init() {
+  flextimus_prime.paused = false;
+  flextimus_prime.configuring = false;
   flextimus_prime.adc.state = ADC_IDLE;
 }
 
@@ -68,13 +82,15 @@ int main(void) {
   __enable_irq();
 
   gpio_up(PAUSE_LED);
+  gpio_up(CONFIG_LED);
+
+  gpio_input(PAUSE_BUTTON);
+  gpio_input(CONFIG_BUTTON);
 
   adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
-
-  // gpio_on(PAUSE_LED);
 
   //LCD Test code. NOTE: WILL HANG FOREVER IF YOU DON'T HAVE AN LCD ATTACHED
   //TODO_MAX: Update documentation with physical set up. Replicate final schematic set up.
@@ -100,6 +116,10 @@ int main(void) {
   }
 
   gpio_down(PAUSE_LED);
+  gpio_down(CONFIG_LED);
+
+  gpio_down(PAUSE_BUTTON);
+  gpio_down(CONFIG_BUTTON);
 
   adc_status = adc_down(FLEX_SENSOR);
   if (ADC_ERROR(adc_status)) {
@@ -124,20 +144,29 @@ void flextimus_prime_pause_pressed() {
 }
 
 void flextimus_prime_config_pressed() {
-  if (flextimus_prime.paused == 0) {
-    flextimus_prime.paused = true;
-    gpio_on(PAUSE_LED);
+  adc_status_t adc_status;
+
+  if (!flextimus_prime.configuring) {
+    flextimus_prime_default_bounds();
+    flextimus_prime.configuring = true;
+    adc_start_continuous_conversion();
+    adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
+    gpio_on(CONFIG_LED);
   } else {
-    flextimus_prime.paused = false;
-    gpio_off(PAUSE_LED);
+    /* TODO Done configuring, start the watchdog max and min values */
+    flextimus_prime.configuring = false;
+    adc_stop_continuous_conversion();
+    adc_awd_config(FLEX_SENSOR, flextimus_prime.adc.max,
+        flextimus_prime.adc.min, adc_awd_callback);
+    gpio_off(CONFIG_LED);
   }
 }
 
 // IRQ handler for both button interrupts
 void button_irq_handler() {
-  if (gpio_asserted(PAUSE_BUTTON)) {
+  if (gpio_asserted_irq(PAUSE_BUTTON)) {
     flextimus_prime_pause_pressed();
-  } else if (gpio_asserted(CONFIG_BUTTON)) {
+  } else if (gpio_asserted_irq(CONFIG_BUTTON)) {
     flextimus_prime_config_pressed();
   }
 }
