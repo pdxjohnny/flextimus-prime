@@ -236,26 +236,23 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   /* Enable the ADC peripheral */
   ADC_Cmd(ADC1, ENABLE);
 
-  /* Wait the ADRDY flag */
-  ADC_WITH_TIMEOUT(ADC_GetFlagStatus(ADC1, ADC_FLAG_ADRDY));
-
   return ADC_OK;
 }
 
-adc_status_t adc_down() {
+adc_status_t adc_down(gpio_pin_t gpio_pin) {
   NVIC_InitTypeDef    NVIC_InitStructure;
 
   /* ADC1 Interrupts disable */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
-  // NVIC_Init(&NVIC_InitStructure);
+  NVIC_Init(&NVIC_InitStructure);
 
   /* Disable the GPIO pin */
-  // gpio_clock(gpio_pin, DISABLE);
+  gpio_clock(gpio_pin, DISABLE);
 
   /* ADC1 Periph clock disable */
-  // RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
+  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
 
   return ADC_OK;
 }

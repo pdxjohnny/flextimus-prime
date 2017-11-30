@@ -101,7 +101,7 @@ int main(void) {
 
   gpio_down(PAUSE_LED);
 
-  adc_status = adc_down();
+  adc_status = adc_down(FLEX_SENSOR);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
