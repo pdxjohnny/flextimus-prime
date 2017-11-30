@@ -43,8 +43,6 @@ void delay(int dly) {
 adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
   flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
   flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
-  gpio_off(PAUSE_LED);
-  flextimus_prime.state = FLEXTIMUS_PRIME_OFF;
   return ADC_OK;
 }
 
@@ -72,8 +70,11 @@ int main(void) {
 
   gpio_up(PAUSE_LED);
   gpio_up(CONFIG_LED);
-
-  adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
+ 
+  gpio_input(PAUSE_BUTTON);
+  gpio_input(CONFIG_BUTTON);
+  
+adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }

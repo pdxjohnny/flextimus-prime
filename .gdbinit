@@ -12,7 +12,6 @@ load
 # Set breakpoints
 break *assert_failed
 break *button_irq_handler
-break main.c:80
 # Print backtrace when a breakpoint is hit
 # Re-enable pagination now that we are debugging
 command 1

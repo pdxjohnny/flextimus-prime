@@ -23,6 +23,7 @@ typedef uint32_t gpio_pin_t;
 void* gpio_perf(gpio_pin_t gpio_pin);
 void gpio_clock(gpio_pin_t gpio_pin, FunctionalState NewState);
 void gpio_up(gpio_pin_t gpio_pin);
+void gpio_input(gpio_pin_t gpio_pin);
 void gpio_down(gpio_pin_t gpio_pin);
 void gpio_on(gpio_pin_t gpio_pin);
 void gpio_off(gpio_pin_t gpio_pin);
