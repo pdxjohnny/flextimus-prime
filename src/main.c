@@ -15,6 +15,7 @@ typedef enum {
  * when we get interrupts. */
 typedef enum {
   ADC_IDLE,
+  ADC_READY,
   ADC_CONVERTED,
 } adc_state_t;
 
@@ -46,6 +47,16 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
   return ADC_OK;
 }
 
+/* Called when the ADC is ready */
+adc_status_t adc_adrdy_callback(adc_status_t adc_status) {
+  adc_status = adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
+
+  return ADC_OK;
+}
+
 void flextimus_prime_init() {
   flextimus_prime.adc.state = ADC_IDLE;
 }
@@ -54,9 +65,11 @@ int main(void) {
   bool running = true;
   adc_status_t adc_status;
 
+  __enable_irq();
+
   gpio_up(PAUSE_LED);
 
-  adc_status = adc_up(FLEX_SENSOR);
+  adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
@@ -73,14 +86,6 @@ int main(void) {
   HD44780_Puts((uint8_t *)"World!");
   delay(5000000);
   HD44780_Clear();*/
-
-  __enable_irq();
-
-  adc_status = adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
-  if (ADC_ERROR(adc_status)) {
-    assert_failed(__FILE__, __LINE__);
-  }
-
 
   while (running) {
     switch (flextimus_prime.state) {
@@ -104,7 +109,7 @@ int main(void) {
   /* The fall of Flextimus Prime */
   assert_param(NULL);
 
-	return 0;
+  return 0;
 }
 
 // Function to pause the alert system

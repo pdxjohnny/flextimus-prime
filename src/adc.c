@@ -30,8 +30,9 @@ adc_status_t ADC_NEED_CONVERSION_CALLBACK = {
 /* Callback function for when the ADC End Of Conversion interrupt is triggered.
  * This is caused by a called to adc_convert_async
  */
-adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
-adc_status_t (*adc_adrdy_handler)();
+static adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
+static adc_status_t (*adc_adrdy_handler)();
+static adc_status_t (*adc_awd_handler)();
 
 /* Create and returns a adc_status_t which has a code of ADC_STATUS_OK with the
  * data specified as an argument. */
@@ -97,6 +98,19 @@ void adc_handler() {
     adc_conversion_complete(adc_read());
     /* ADC1 regular Software Stop Conv */
     ADC_StopOfConversion(ADC1);
+    /* Disable interrupts on EOC (End Of Conversion) */
+    ADC_ITConfig(ADC1, ADC_IT_EOC, DISABLE);
+  } else if (ADC_GetITStatus(ADC1, ADC_IT_EOSEQ) == SET) {
+    ADC_ClearITPendingBit(ADC1, ADC_IT_EOSEQ);
+  } else if (ADC_GetITStatus(ADC1, ADC_IT_AWD) == SET) {
+    ADC_ClearITPendingBit(ADC1, ADC_IT_AWD);
+    if (adc_awd_handler != NULL) {
+      adc_awd_handler();
+    }
+  } else if (ADC_GetITStatus(ADC1, ADC_IT_EOSMP) == SET) {
+    ADC_ClearITPendingBit(ADC1, ADC_IT_EOSMP);
+  } else if (ADC_GetITStatus(ADC1, ADC_IT_OVR) == SET) {
+    ADC_ClearITPendingBit(ADC1, ADC_IT_OVR);
   }
   adc_within_interrupt = false;
   adc_converting = false;
@@ -142,33 +156,39 @@ adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
   return status;
 }
 
-adc_status_t adc_awd_config(int start, int stop) {
-  /* TODO Configure the ADC Thresholds between whatever the config button sets
-   * them to. So basically call this  */
+adc_status_t adc_awd_config(gpio_pin_t gpio_pin, int start, int stop,
+    adc_status_t (*set_adc_awd_handler)()) {
+  /* Set the callback handler for when the watchdog interrupt is generated */
+  adc_awd_handler = set_adc_awd_handler;
+  assert_param(adc_awd_handler);
+
+  /* Set the bounds of the watchdog */
   // ADC_AnalogWatchdogThresholdsConfig(ADC1, 3102, 1861);
   ADC_AnalogWatchdogThresholdsConfig(ADC1, start, stop);
 
-  /* Enable the ADC1 single channel */
+  /* Enable the ADC1 single channel and overrun mode */
   ADC_AnalogWatchdogSingleChannelCmd(ADC1, ENABLE);
-
   ADC_OverrunModeCmd(ADC1, ENABLE);
+
   /* Enable the ADC1 analog watchdog */
   ADC_AnalogWatchdogCmd(ADC1, ENABLE);
 
-  /* Select a single ADC1 from proper channel
-   * TODO select correct channel (I don't think we are using 11) */
-  ADC_AnalogWatchdogSingleChannelConfig(ADC1, ADC_AnalogWatchdog_Channel_11);
+  /* Select the channel for the gpioo_pin we are using */
+  ADC_AnalogWatchdogSingleChannelConfig(ADC1, ADC_GPIO_TO_CHANNEL(gpio_pin));
 
   /* Enable AWD interrupt */
   ADC_ITConfig(ADC1, ADC_IT_AWD, ENABLE);
 }
 
-adc_status_t adc_up(gpio_pin_t gpio_pin) {
+adc_status_t adc_up(gpio_pin_t gpio_pin,
+    adc_status_t (*set_adc_adrdy_handler)()) {
   ADC_InitTypeDef     ADC_InitStructure;
   GPIO_InitTypeDef    GPIO_InitStructure;
   NVIC_InitTypeDef    NVIC_InitStructure;
 
   adc_conversion_complete = NULL;
+  adc_adrdy_handler = set_adc_adrdy_handler;
+  assert_param(adc_adrdy_handler);
 
   /* Enable the GPIO pin */
   gpio_clock(gpio_pin, ENABLE);
@@ -198,7 +218,8 @@ adc_status_t adc_up(gpio_pin_t gpio_pin) {
 
   /* Convert the ADC1 Channel for the reuested GPIO with 239.5 cycle sample time
    * TODO change to correct channel based off of gpio_pins. */
-  ADC_ChannelConfig(ADC1, ADC_Channel_11, ADC_SampleTime_239_5Cycles);
+  ADC_ChannelConfig(ADC1, ADC_GPIO_CHSEL(gpio_pin),
+      ADC_SampleTime_239_5Cycles);
 
   /* Enable ADC ready interrupt */
   ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);
@@ -235,4 +256,6 @@ adc_status_t adc_down() {
 
   /* ADC1 Periph clock disable */
   // RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
+
+  return ADC_OK;
 }

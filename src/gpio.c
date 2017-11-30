@@ -56,6 +56,7 @@ void gpio_input(gpio_pin_t gpio_pin) {
   EXTI_InitTypeDef   EXTI_InitStructure;
   GPIO_InitTypeDef   GPIO_InitStructure;
   NVIC_InitTypeDef   NVIC_InitStructure;
+  uint16_t gpio_pin_number = gpio_pin & GPIO_PIN_MASK;
 
   gpio_clock(gpio_pin, ENABLE);
 
@@ -70,32 +71,31 @@ void gpio_input(gpio_pin_t gpio_pin) {
 
   /* Connect EXTI0 Line to PA0 pin */
   if (gpio_pin & GPIO_A) {
-    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA,
-        bit_index(gpio_pin & GPIO_PIN_MASK));
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOA, bit_index(gpio_pin_number));
   } else if (gpio_pin & GPIO_B) {
-    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB,
-        bit_index(gpio_pin & GPIO_PIN_MASK));
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOB, bit_index(gpio_pin_number));
   } else if (gpio_pin & GPIO_C) {
-    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC,
-        bit_index(gpio_pin & GPIO_PIN_MASK));
+    SYSCFG_EXTILineConfig(EXTI_PortSourceGPIOC, bit_index(gpio_pin_number));
   }
 
   /* Configure the button from this line */
-  EXTI_InitStructure.EXTI_Line = gpio_pin & GPIO_PIN_MASK;
+  EXTI_InitStructure.EXTI_Line = gpio_pin_number;
   EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
   EXTI_InitStructure.EXTI_Trigger = EXTI_Trigger_Rising;
   EXTI_InitStructure.EXTI_LineCmd = ENABLE;
   EXTI_Init(&EXTI_InitStructure);
 
   /* Enable and set EXTI0 Interrupt */
-  /* TODO Is EXTI0_1_IRQn correct? */
-  NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn;
+  if (gpio_pin_number >= 0 && gpio_pin_number <= 1) {
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI0_1_IRQn;
+  } else if (gpio_pin_number >= 2 && gpio_pin_number <= 3) {
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI2_3_IRQn;
+  } else if (gpio_pin_number >= 4 && gpio_pin_number <= 15) {
+    NVIC_InitStructure.NVIC_IRQChannel = EXTI4_15_IRQn;
+  }
   NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
-
-  /* Simulate a falling edge */
-  // EXTI_GenerateSWInterrupt(EXTI_Line8);
 }
 
 int gpio_asserted(gpio_pin_t gpio_pin) {

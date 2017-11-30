@@ -17,8 +17,10 @@
       return ADC_TIMEOUT;\
     }\
   }
-#define ADC_VOLTS(X)        ((X) / 1000)
-#define ADC_MILLIVOLTS(X)   (((X) % 1000) / 100)
+#define ADC_VOLTS(X)                  ((X) / 1000)
+#define ADC_MILLIVOLTS(X)             (((X) % 1000) / 100)
+#define ADC_GPIO_CHSEL(X)             (1 << ((X) & GPIO_PIN_MASK))
+#define ADC_GPIO_TO_CHANNEL(X)        (((X) & GPIO_PIN_MASK) << 26)
 
 typedef enum {
   ADC_STATUS_OK,
@@ -48,15 +50,14 @@ extern adc_status_t ADC_NEED_CONVERSION_CALLBACK;
 
 typedef adc_status_t adc_convertion_result;
 
-extern adc_status_t (*adc_conversion_complete)(adc_convertion_result result);
-
 adc_status_t adc_calibration();
 adc_status_t adc_enable();
 adc_status_t adc_read();
 adc_status_t adc_select_conversion_pin(gpio_pin_t pin_to_convert);
 adc_status_t adc_watch_enable(gpio_pin_t pin_to_convert,
     uint16_t vrefint_low, uint16_t vrefint_high);
-adc_status_t adc_up(gpio_pin_t gpio_pin);
+adc_status_t adc_up(gpio_pin_t gpio_pin,
+    adc_status_t (*set_adc_adrdy_handler)());
 adc_status_t adc_down();
 adc_status_t adc_convert(gpio_pin_t pin_to_convert);
 adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
