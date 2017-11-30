@@ -221,8 +221,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   ADC_Init(ADC1, &ADC_InitStructure);
 
   /* Configure ADC1 Channel for the requested GPIO with 239.5 cycle sample */
-  ADC_ChannelConfig(ADC1, ADC_GPIO_CHSEL(gpio_pin),
-      ADC_SampleTime_239_5Cycles);
+  ADC_ChannelConfig(ADC1, gpio_pin & GPIO_PIN_MASK, ADC_SampleTime_239_5Cycles);
 
   /* Enable ADC ready interrupt */
   ADC_ITConfig(ADC1, ADC_IT_ADRDY, ENABLE);

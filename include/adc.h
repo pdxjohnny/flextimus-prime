@@ -21,7 +21,6 @@
 #define __ADC_CONV(X)                 (((X) * 3300) / 0xFFF)
 #define ADC_VOLTS(X)                  (__ADC_CONV(X) / 1000)
 #define ADC_MILLIVOLTS(X)             ((__ADC_CONV(X) % 1000) / 100)
-#define ADC_GPIO_CHSEL(X)             (1 << ((X) & GPIO_PIN_MASK))
 #define ADC_GPIO_TO_CHANNEL(X)        (((X) & GPIO_PIN_MASK) << 26)
 
 typedef enum {
