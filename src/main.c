@@ -137,7 +137,7 @@ void flextimus_prime_pause_pressed() {
 void flextimus_prime_config_pressed() {
   adc_status_t adc_status;
 
-  if (flextimus_prime.paused == 0) {
+  if (!flextimus_prime.configuring) {
     flextimus_prime.configuring = true;
     adc_start_continuous_conversion();
     adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);

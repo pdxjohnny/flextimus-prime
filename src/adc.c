@@ -189,6 +189,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   GPIO_InitTypeDef    GPIO_InitStructure;
   NVIC_InitTypeDef    NVIC_InitStructure;
 
+  adc_converting_continous = false;
   adc_conversion_complete = NULL;
   adc_adrdy_handler = set_adc_adrdy_handler;
   assert_param(adc_adrdy_handler);
