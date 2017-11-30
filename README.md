@@ -37,7 +37,7 @@ git checkout -b describe_my_intended_changes
 ```
 
 Now connect the board, and start `st-util`. From the the top level of this repo
-run `arm-eabi-none-gdb` or `make gdb`.
+run `arm-none-eabi-gdb` or `make gdb`.
 
 Start hacking!
 
