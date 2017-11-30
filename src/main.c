@@ -81,8 +81,6 @@ adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
 
   gpio_input(PAUSE_BUTTON);
 
-  EXTI_GenerateSWInterrupt(EXTI_Line3);
-
   //LCD Test code. NOTE: WILL HANG FOREVER IF YOU DON'T HAVE AN LCD ATTACHED
   //TODO_MAX: Update documentation with physical set up. Replicate final schematic set up.
 
@@ -108,6 +106,10 @@ adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
 
   gpio_down(PAUSE_LED);
   gpio_down(CONFIG_LED);
+
+
+  gpio_down(PAUSE_BUTTON);
+  gpio_down(CONFIG_BUTTON);
 
   adc_status = adc_down(FLEX_SENSOR);
   if (ADC_ERROR(adc_status)) {
