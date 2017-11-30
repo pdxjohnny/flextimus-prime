@@ -156,24 +156,24 @@ adc_status_t adc_convert_async(gpio_pin_t pin_to_convert,
   return status;
 }
 
-adc_status_t adc_awd_config(gpio_pin_t gpio_pin, int start, int stop,
+adc_status_t adc_awd_config(gpio_pin_t gpio_pin, int max, int min,
     adc_status_t (*set_adc_awd_handler)()) {
   /* Set the callback handler for when the watchdog interrupt is generated */
   adc_awd_handler = set_adc_awd_handler;
   assert_param(adc_awd_handler);
 
   /* Set the bounds of the watchdog */
-  // ADC_AnalogWatchdogThresholdsConfig(ADC1, 3102, 1861);
-  ADC_AnalogWatchdogThresholdsConfig(ADC1, start, stop);
+  ADC_AnalogWatchdogThresholdsConfig(ADC1, max, min);
 
-  /* Enable the ADC1 single channel and overrun mode */
+  /* Enable the ADC single channel and overrun mode */
   ADC_AnalogWatchdogSingleChannelCmd(ADC1, ENABLE);
+  // TODO should we be overriding?
   ADC_OverrunModeCmd(ADC1, ENABLE);
 
-  /* Enable the ADC1 analog watchdog */
+  /* Enable the ADC analog watchdog */
   ADC_AnalogWatchdogCmd(ADC1, ENABLE);
 
-  /* Select the channel for the gpioo_pin we are using */
+  /* Select the channel for the gpio_pin we are using */
   ADC_AnalogWatchdogSingleChannelConfig(ADC1, ADC_GPIO_TO_CHANNEL(gpio_pin));
 
   /* Enable AWD interrupt */
