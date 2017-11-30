@@ -1,6 +1,7 @@
 #include <interrupt_handler.h>
 void init(void);
 int main(void);
+void button_irq_handler(void);
 void Default_Handler(void);
 void debug_printIPSR(void);
 // The following are 'declared' in the linker script
@@ -34,9 +35,9 @@ const void * Vectors[] __attribute__((section(".vectors"))) ={
 	Default_Handler, 	/* 2: RTC */
 	Default_Handler, 	/* 3: FLASH */
 	Default_Handler, 	/* 4: RCC */
-	Default_Handler, 	/* 5: EXTI0_1 */
-	Default_Handler, 	/* 6: EXTI2_3 */
-	Default_Handler, 	/* 7: EXTI4_15 */
+	button_irq_handler, 	/* 5: EXTI0_1 */
+	button_irq_handler, 	/* 6: EXTI2_3 */
+	button_irq_handler, 	/* 7: EXTI4_15 */
 	Default_Handler, 	/* 8: TSC */
 	Default_Handler, 	/* 9: DMA_CH1 */
 	Default_Handler, 	/* 10: DMA_CH2_3, DMA2_CH_1_2 */
