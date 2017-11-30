@@ -54,8 +54,13 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
 }
 
 /* Called when the ADC is ready */
-adc_status_t adc_adrdy_callback(adc_status_t adc_status) {
+adc_status_t adc_adrdy_callback() {
   flextimus_prime.adc.state = ADC_READY;
+  return ADC_OK;
+}
+
+adc_status_t adc_awd_callback() {
+  /* TODO trigger buzzer, LCD, or something */
   return ADC_OK;
 }
 
@@ -151,6 +156,8 @@ void flextimus_prime_config_pressed() {
     /* TODO Done configuring, start the watchdog max and min values */
     flextimus_prime.configuring = false;
     adc_stop_continuous_conversion();
+    adc_awd_config(FLEX_SENSOR, flextimus_prime.adc.max,
+        flextimus_prime.adc.min, adc_awd_callback);
     gpio_off(CONFIG_LED);
   }
 }
