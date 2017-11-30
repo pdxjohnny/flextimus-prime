@@ -143,9 +143,9 @@ void flextimus_prime_config_pressed() {
 
 // IRQ handler for both button interrupts
 void button_irq_handler() {
-  if (gpio_asserted(PAUSE_BUTTON)) {
+  if (gpio_asserted_irq(PAUSE_BUTTON)) {
     flextimus_prime_pause_pressed();
-  } else if (gpio_asserted(CONFIG_BUTTON)) {
+  } else if (gpio_asserted_irq(CONFIG_BUTTON)) {
     flextimus_prime_config_pressed();
   }
 }

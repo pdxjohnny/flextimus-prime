@@ -104,3 +104,11 @@ void gpio_input(gpio_pin_t gpio_pin) {
 int gpio_asserted(gpio_pin_t gpio_pin) {
   return GPIO_ReadInputDataBit(gpio_perf(gpio_pin), gpio_pin & GPIO_PIN_MASK);
 }
+
+bool gpio_asserted_irq(gpio_pin_t gpio_pin) {
+  if (EXTI_GetITStatus(gpio_pin & GPIO_PIN_MASK) != RESET) {
+    EXTI_ClearITPendingBit(gpio_pin & GPIO_PIN_MASK);
+    return gpio_asserted(gpio_pin);
+  }
+  return false;
+}

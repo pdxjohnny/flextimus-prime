@@ -216,8 +216,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   ADC_InitStructure.ADC_ScanDirection = ADC_ScanDirection_Upward;
   ADC_Init(ADC1, &ADC_InitStructure);
 
-  /* Convert the ADC1 Channel for the reuested GPIO with 239.5 cycle sample time
-   * TODO change to correct channel based off of gpio_pins. */
+  /* Configure ADC1 Channel for the requested GPIO with 239.5 cycle sample */
   ADC_ChannelConfig(ADC1, ADC_GPIO_CHSEL(gpio_pin),
       ADC_SampleTime_239_5Cycles);
 
