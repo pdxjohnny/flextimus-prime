@@ -14,6 +14,10 @@ git config --global user.email 'first.last@example.com'
 Install the git commit hooks. This will ensure that you can only commit if the
 source compiles successfully.
 
+> **WARNING** This adds `set auto-load safe-path /` to your `~/.gdbinit` which
+> is not safe because when you start gdb it will now execute any commands in the
+> `.gdbinit` file in the current directory.
+
 ```console
 ./scripts/install.sh
 ```
@@ -31,6 +35,9 @@ Create a new branch for your work
 ```console
 git checkout -b describe_my_intended_changes
 ```
+
+Now connect the board, and start `st-util`. From the the top level of this repo
+run `arm-eabi-none-gdb` or `make gdb`.
 
 Start hacking!
 
