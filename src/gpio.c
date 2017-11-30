@@ -1,6 +1,6 @@
 #include <util.h>
 #include <gpio.h>
-#include "main.h"
+#include <flextimus.h>
 
 void* gpio_perf(gpio_pin_t gpio_pin) {
   void *which_gpio = NULL;
@@ -15,21 +15,21 @@ void* gpio_perf(gpio_pin_t gpio_pin) {
   return which_gpio;
 }
 
-void gpio_clock(gpio_pin_t gpio_pin) {
+void gpio_clock(gpio_pin_t gpio_pin, FunctionalState NewState) {
   /* RCC peripheral clock enable */
   if (gpio_pin & GPIO_A) {
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOA, NewState);
   } else if (gpio_pin & GPIO_B) {
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOB, NewState);
   } else if (gpio_pin & GPIO_C) {
-    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, ENABLE);
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_GPIOC, NewState);
   }
 }
 
 void gpio_up(gpio_pin_t gpio_pin) {
   GPIO_InitTypeDef GPIO_InitStructure;
 
-  gpio_clock(gpio_pin);
+  gpio_clock(gpio_pin, ENABLE);
 
   /* Configure pins in output pushpull mode */
   GPIO_InitStructure.GPIO_Pin = (gpio_pin & GPIO_PIN_MASK);
@@ -38,6 +38,10 @@ void gpio_up(gpio_pin_t gpio_pin) {
   GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
   GPIO_InitStructure.GPIO_PuPd = GPIO_PuPd_NOPULL;
   GPIO_Init(GPIOC, &GPIO_InitStructure);
+}
+
+void gpio_down(gpio_pin_t gpio_pin) {
+  gpio_clock(gpio_pin, DISABLE);
 }
 
 void gpio_on(gpio_pin_t gpio_pin) {
@@ -53,7 +57,7 @@ void gpio_input(gpio_pin_t gpio_pin) {
   GPIO_InitTypeDef   GPIO_InitStructure;
   NVIC_InitTypeDef   NVIC_InitStructure;
 
-  gpio_clock(gpio_pin);
+  gpio_clock(gpio_pin, ENABLE);
 
   /* Configure gpio_pin as input floating */
   GPIO_InitStructure.GPIO_Pin = gpio_pin & GPIO_PIN_MASK;

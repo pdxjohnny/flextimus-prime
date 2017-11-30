@@ -1,6 +1,6 @@
 #include <adc.h>
 #include <gpio.h>
-#include "main.h"
+#include <flextimus.h>
 
 static bool adc_within_interrupt;
 static bool adc_converting;
@@ -86,11 +86,17 @@ adc_status_t adc_convert(gpio_pin_t pin_to_convert) {
  */
 void adc_handler() {
   adc_within_interrupt = true;
-  if (ADC_GetITStatus(ADC1, ADC_IT_ADRDY) && adc_adrdy_handler != NULL) {
-    adc_adrdy_handler();
-  } else if (ADC_GetITStatus(ADC1, ADC_IT_EOC) &&
+  if (ADC_GetITStatus(ADC1, ADC_IT_ADRDY) == SET) {
+    ADC_ClearITPendingBit(ADC1, ADC_IT_ADRDY);
+    if (adc_adrdy_handler != NULL) {
+      adc_adrdy_handler();
+    }
+  } else if (ADC_GetITStatus(ADC1, ADC_IT_EOC) == SET &&
       adc_conversion_complete != NULL) {
+    ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
     adc_conversion_complete(adc_read());
+    /* ADC1 regular Software Stop Conv */
+    ADC_StopOfConversion(ADC1);
   }
   adc_within_interrupt = false;
   adc_converting = false;
@@ -164,7 +170,8 @@ adc_status_t adc_up(gpio_pin_t gpio_pin) {
 
   adc_conversion_complete = NULL;
 
-  gpio_clock(gpio_pin);
+  /* Enable the GPIO pin */
+  gpio_clock(gpio_pin, ENABLE);
 
   /* ADC1 Periph clock enable */
   RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, ENABLE);
@@ -221,8 +228,11 @@ adc_status_t adc_down() {
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
   NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
   NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
-  NVIC_Init(&NVIC_InitStructure);
+  // NVIC_Init(&NVIC_InitStructure);
+
+  /* Disable the GPIO pin */
+  // gpio_clock(gpio_pin, DISABLE);
 
   /* ADC1 Periph clock disable */
-  RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
+  // RCC_APB2PeriphClockCmd(RCC_APB2Periph_ADC1, DISABLE);
 }

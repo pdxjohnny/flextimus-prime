@@ -1,8 +1,22 @@
 #include <adc.h>
 #include <gpio.h>
-#include "main.h"
+#include <flextimus.h>
 #include "config.h"
 #include "hd44780.h"
+
+/* The state of Flextimus Prime. This controls the main loop. */
+typedef enum {
+  FLEXTIMUS_PRIME_ON,
+  FLEXTIMUS_PRIME_OFF,
+  FLEXTIMUS_PRIME_SLEEP,
+} flextimus_prime_state_t;
+
+/* The ADC state type lets us keep track of what we should be doing with the ADC
+ * when we get interrupts. */
+typedef enum {
+  ADC_IDLE,
+  ADC_CONVERTED,
+} adc_state_t;
 
 /* One global to rule them all */
 struct {
@@ -10,7 +24,9 @@ struct {
   struct {
     uint32_t volts;
     uint32_t millivolts;
+    adc_state_t state;
   } adc;
+  flextimus_prime_state_t state;
 } flextimus_prime;
 
 void assert_failed(uint8_t* file, uint32_t line) {
@@ -26,10 +42,16 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
   flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
   flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
   gpio_off(PAUSE_LED);
+  flextimus_prime.state = FLEXTIMUS_PRIME_OFF;
   return ADC_OK;
 }
 
+void flextimus_prime_init() {
+  flextimus_prime.adc.state = ADC_IDLE;
+}
+
 int main(void) {
+  bool running = true;
   adc_status_t adc_status;
 
   gpio_up(PAUSE_LED);
@@ -59,9 +81,18 @@ int main(void) {
     assert_failed(__FILE__, __LINE__);
   }
 
-	while (1) {
-    // PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
-	}
+
+  while (running) {
+    switch (flextimus_prime.state) {
+    case FLEXTIMUS_PRIME_SLEEP:
+      PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
+    case FLEXTIMUS_PRIME_OFF:
+      running = false;
+    case FLEXTIMUS_PRIME_ON:
+    default:
+      continue;
+    }
+  }
 
   gpio_down(PAUSE_LED);
 
@@ -69,6 +100,9 @@ int main(void) {
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
+
+  /* The fall of Flextimus Prime */
+  assert_param(NULL);
 
 	return 0;
 }

@@ -5,7 +5,7 @@
 #include <gpio.h>
 
 #ifndef ADC_TIMEOUT_TICKS
-#define ADC_TIMEOUT_TICKS   100000
+#define ADC_TIMEOUT_TICKS   500000
 #endif /* ADC_TIMEOUT_TICKS */
 
 /* If we are in an interrupt and have checked once already then we need to
