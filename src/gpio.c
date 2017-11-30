@@ -26,6 +26,7 @@ void gpio_clock(gpio_pin_t gpio_pin, FunctionalState NewState) {
   }
 }
 
+/* Enables a GPIO pin as an ouput */
 void gpio_up(gpio_pin_t gpio_pin) {
   GPIO_InitTypeDef GPIO_InitStructure;
 
@@ -40,6 +41,7 @@ void gpio_up(gpio_pin_t gpio_pin) {
   GPIO_Init(GPIOC, &GPIO_InitStructure);
 }
 
+/* Turns off GPIO pin which was either an output or input */
 void gpio_down(gpio_pin_t gpio_pin) {
   gpio_clock(gpio_pin, DISABLE);
 }
@@ -52,6 +54,7 @@ void gpio_off(gpio_pin_t gpio_pin) {
   ((GPIO_TypeDef *)gpio_perf(gpio_pin))->BRR = gpio_pin & GPIO_PIN_MASK;
 }
 
+/* Enables a GPIO pin as an input using the EXTI lines */
 void gpio_input(gpio_pin_t gpio_pin) {
   EXTI_InitTypeDef   EXTI_InitStructure;
   GPIO_InitTypeDef   GPIO_InitStructure;
