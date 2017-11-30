@@ -50,7 +50,7 @@ adc_status_t adc_read() {
   /* Wait end of conversion */
   ADC_WITH_TIMEOUT(ADC_GetFlagStatus(ADC1, ADC_FLAG_EOC) == RESET);
   /* Get ADC1 converted data and compute the voltage */
-  return adc_success((ADC_GetConversionValue(ADC1) * 3300) / 0xFFF);
+  return adc_success(ADC_GetConversionValue(ADC1));
 }
 
 /* Tell the other functions through the global variable `adc_converting` that we
