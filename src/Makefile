@@ -15,7 +15,7 @@ LD=arm-none-eabi-ld
 
 BOARD=STM32F042
 
-CCFLAGS=-mcpu=cortex-m0 -mthumb -g -D$(BOARD) -I ../include
+CCFLAGS=-ffreestanding -mcpu=cortex-m0 -mthumb -g -D$(BOARD) -I ../include
 CCFLAGS+= -I libs/Libraries/CMSIS/Device/ST/STM32F0xx/Include
 CCFLAGS+= -I libs/Libraries/CMSIS/Include
 CCFLAGS+= -I libs/Libraries/STM32F0xx_StdPeriph_Driver/inc

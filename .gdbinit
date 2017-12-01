@@ -11,7 +11,8 @@ tar extended-remote :4242
 load
 # Set breakpoints
 break *assert_failed
-break *adc_handler
+break *flextimus_prime_pause_pressed
+break *flextimus_prime_config_pressed
 # Print backtrace when a breakpoint is hit
 # Re-enable pagination now that we are debugging
 command 1

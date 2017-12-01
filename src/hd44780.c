@@ -107,6 +107,12 @@ void HD44780_PowerOn(void)
   // Function set
   HD44780_WriteInstruction(HD44780_FUNCTION_SET |
   		           HD44780_FUNCTION_SET_DL, false);
+                           
+  Delay(SystemCoreClock/8/25000); // ~40 us
+  
+  // Function set
+  HD44780_WriteInstruction(HD44780_FUNCTION_SET |
+  		           HD44780_FUNCTION_SET_DL, false);
 
   HD44780_WriteInstruction(HD44780_FUNCTION_SET, true);
   
