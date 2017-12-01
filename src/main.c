@@ -43,12 +43,24 @@ void delay(int dly) {
 
 /* Called when the ADC finishes a conversion */
 adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
+  bool should_buzzer;
   flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
   flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
-  if (adc_status.data > flextimus_prime.adc.max) {
-    flextimus_prime.adc.max = adc_status.data;
-  } else if (adc_status.data < flextimus_prime.adc.min) {
-    flextimus_prime.adc.min = adc_status.data;
+  if (flextimus_prime.configuring) {
+    /* Configure */
+    if (adc_status.data > flextimus_prime.adc.max) {
+      flextimus_prime.adc.max = adc_status.data;
+    } else if (adc_status.data < flextimus_prime.adc.min) {
+      flextimus_prime.adc.min = adc_status.data;
+    }
+  } else if (!flextimus_prime.paused) {
+    /* If we are not paused and are out of range then activate buzzer */
+    if ((adc_status.data > flextimus_prime.adc.max) ||
+        (adc_status.data < flextimus_prime.adc.min)) {
+      gpio_on(BUZZER);
+    } else {
+      gpio_off(BUZZER);
+    }
   }
   return ADC_OK;
 }
@@ -56,11 +68,6 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
 /* Called when the ADC is ready */
 adc_status_t adc_adrdy_callback() {
   flextimus_prime.adc.state = ADC_READY;
-  return ADC_OK;
-}
-
-adc_status_t adc_awd_callback() {
-  /* TODO trigger buzzer, LCD, or something */
   return ADC_OK;
 }
 
@@ -103,6 +110,11 @@ int main(void) {
   delay(5000000);
   HD44780_Clear();*/
 
+  /* Start converting and keep converting forever */
+  adc_start_continuous_conversion();
+
+  adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
+
   while (running) {
     switch (flextimus_prime.state) {
     case FLEXTIMUS_PRIME_SLEEP:
@@ -114,6 +126,8 @@ int main(void) {
       continue;
     }
   }
+
+  adc_stop_continuous_conversion();
 
   gpio_down(PAUSE_LED);
   gpio_down(CONFIG_LED);
@@ -134,7 +148,7 @@ int main(void) {
 
 // Function to pause the alert system
 void flextimus_prime_pause_pressed() {
-  if (flextimus_prime.paused == 0) {
+  if (!flextimus_prime.paused) {
     flextimus_prime.paused = true;
     gpio_on(PAUSE_LED);
   } else {
@@ -147,17 +161,13 @@ void flextimus_prime_config_pressed() {
   adc_status_t adc_status;
 
   if (!flextimus_prime.configuring) {
+    /* Start configuring */
     flextimus_prime_default_bounds();
     flextimus_prime.configuring = true;
-    adc_start_continuous_conversion();
-    adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
     gpio_on(CONFIG_LED);
   } else {
-    /* TODO Done configuring, start the watchdog max and min values */
+    /* Done configuring, start the watchdog max and min values */
     flextimus_prime.configuring = false;
-    adc_stop_continuous_conversion();
-    adc_awd_config(FLEX_SENSOR, flextimus_prime.adc.max,
-        flextimus_prime.adc.min, adc_awd_callback);
     gpio_off(CONFIG_LED);
   }
 }
