@@ -1,67 +1,96 @@
-/**
-  ******************************************************************************
-  * @file    Project/STM32F0xx_StdPeriph_Templates/main.c 
-  * @author  MCD Application Team
-  * @version V1.5.0
-  * @date    05-December-2014
-  * @brief   Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * <h2><center>&copy; COPYRIGHT 2014 STMicroelectronics</center></h2>
-  *
-  * Licensed under MCD-ST Liberty SW License Agreement V2, (the "License");
-  * You may not use this file except in compliance with the License.
-  * You may obtain a copy of the License at:
-  *
-  *        http://www.st.com/software_license_agreement_liberty_v2
-  *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
-  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-  * See the License for the specific language governing permissions and
-  * limitations under the License.
-  *
-  ******************************************************************************
-  */
-
-/* Includes ------------------------------------------------------------------*/
 #include <adc.h>
-#include "main.h"
+#include <gpio.h>
+#include <flextimus.h>
+#include "config.h"
 #include "hd44780.h"
 
-/** @addtogroup STM32F0xx_StdPeriph_Templates
-  * @{
-  */
+/* The state of Flextimus Prime. This controls the main loop. */
+typedef enum {
+  FLEXTIMUS_PRIME_ON,
+  FLEXTIMUS_PRIME_OFF,
+  FLEXTIMUS_PRIME_SLEEP,
+} flextimus_prime_state_t;
 
+/* The ADC state type lets us keep track of what we should be doing with the ADC
+ * when we get interrupts. */
+typedef enum {
+  ADC_IDLE,
+  ADC_READY,
+  ADC_CONVERTED,
+} adc_state_t;
+
+/* One global to rule them all */
+struct {
+  bool paused;
+  bool configuring;
+  struct {
+    uint32_t max;
+    uint32_t min;
+    uint32_t volts;
+    uint32_t millivolts;
+    adc_state_t state;
+  } adc;
+  flextimus_prime_state_t state;
+} flextimus_prime;
+
+void assert_failed(uint8_t* file, uint32_t line) {
+  while (1) {}
+}
 
 void delay(int dly) {
   while (dly--);
 }
 
-/**
-  * @brief  Main program.
-  * @param  None
-  * @retval None
-  */
-int main(void)
-{
-  /*!< At this stage the microcontroller clock setting is already configured,
-       this is done through SystemInit() function which is called from startup
-       file (startup_stm32f0xx.s) before to branch to application main.
-       To reconfigure the default setting of SystemInit() function, refer to
-       system_stm32f0xx.c file
-     */
-  uint32_t temp;
-  adc_status_t adc_status;
-  /* Add your application code here */
-  
-  // RCC_CFGR |= BIT14;
-  // Power up PORTB && PORTA && PORTF (NUCLEO)
-  RCC->AHBENR |= RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOAEN;
+/* Called when the ADC finishes a conversion */
+adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
+  flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
+  flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
+  if (adc_status.data > flextimus_prime.adc.max) {
+    flextimus_prime.adc.max = adc_status.data;
+  } else if (adc_status.data < flextimus_prime.adc.min) {
+    flextimus_prime.adc.min = adc_status.data;
+  }
+  return ADC_OK;
+}
 
-  	GPIOA->MODER |= GPIO_MODER_MODER3_0; // make bit3  an output
-  	GPIOA->MODER &= ~GPIO_MODER_MODER3_1; // make bit3  an output
+/* Called when the ADC is ready */
+adc_status_t adc_adrdy_callback() {
+  flextimus_prime.adc.state = ADC_READY;
+  return ADC_OK;
+}
+
+adc_status_t adc_awd_callback() {
+  /* TODO trigger buzzer, LCD, or something */
+  return ADC_OK;
+}
+
+void flextimus_prime_default_bounds() {
+  flextimus_prime.adc.min = 2000;
+  flextimus_prime.adc.max = 2000;
+}
+
+void flextimus_prime_init() {
+  flextimus_prime.paused = false;
+  flextimus_prime.configuring = false;
+  flextimus_prime.adc.state = ADC_IDLE;
+}
+
+int main(void) {
+  bool running = true;
+  adc_status_t adc_status;
+
+  __enable_irq();
+
+  gpio_up(PAUSE_LED);
+  gpio_up(CONFIG_LED);
+
+  gpio_input(PAUSE_BUTTON);
+  gpio_input(CONFIG_BUTTON);
+
+  adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
+  if (ADC_ERROR(adc_status)) {
+    assert_failed(__FILE__, __LINE__);
+  }
 
   //LCD Test code. NOTE: WILL HANG FOREVER IF YOU DON'T HAVE AN LCD ATTACHED
   //TODO_MAX: Update documentation with physical set up. Replicate final schematic set up.
@@ -72,62 +101,72 @@ int main(void)
   HD44780_GotoXY(2,1);
   HD44780_Puts((uint8_t *)"World!");
   delay(5000000);
-  HD44780_Clear();*/  
+  HD44780_Clear();*/
 
-
-  adc_status = adc_up();
-  if (ADC_ERROR(adc_status)) {
-    assert_failed(__FILE__, __LINE__);
-  }
-
-  __enable_irq();
-
-	while (1) {
-		GPIOB->ODR |= GPIO_MODER_MODER1_1;
-		delay(500000);
-    adc_status = adc_convert(ADC_CONVERT_PA1);
-    if (ADC_ERROR(adc_status)) {
-      assert_failed(__FILE__, __LINE__);
+  while (running) {
+    switch (flextimus_prime.state) {
+    case FLEXTIMUS_PRIME_SLEEP:
+      PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
+    case FLEXTIMUS_PRIME_OFF:
+      running = false;
+    case FLEXTIMUS_PRIME_ON:
+    default:
+      continue;
     }
-    temp = adc_status.data;
-		GPIOB->ODR &= ~GPIO_MODER_MODER1_1;
-		delay(500000);
-	}
+  }
 
-  adc_status = adc_down();
+  gpio_down(PAUSE_LED);
+  gpio_down(CONFIG_LED);
+
+  gpio_down(PAUSE_BUTTON);
+  gpio_down(CONFIG_BUTTON);
+
+  adc_status = adc_down(FLEX_SENSOR);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
 
-  /* TODO go to sleep
-   *
-   * Calls the ARM `WFI` instruction.
-   *
-   * WFI (Wait For Interrupt) makes the processor suspend execution (Clock is
-   * stopped) until one of the following events take place:
-   * - An IRQ interrupt
-   * - An FIQ interrupt
-   * - A Debug Entry request made to the processor.
-   */
-  // cpu_sleep();
+  /* The fall of Flextimus Prime */
+  assert_param(NULL);
 
-	return 0;
+  return 0;
 }
 
-/**
-  * @brief  Reports the name of the source file and the source line number
-  *         where the assert_param error has occurred.
-  * @param  file: pointer to the source file name
-  * @param  line: assert_param error line source number
-  * @retval None
-  */
-void assert_failed(uint8_t* file, uint32_t line) {
-  /* Infinite loop */
-  while (1) {}
+// Function to pause the alert system
+void flextimus_prime_pause_pressed() {
+  if (flextimus_prime.paused == 0) {
+    flextimus_prime.paused = true;
+    gpio_on(PAUSE_LED);
+  } else {
+    flextimus_prime.paused = false;
+    gpio_off(PAUSE_LED);
+  }
 }
 
-/**
-  * @}
-  */
+void flextimus_prime_config_pressed() {
+  adc_status_t adc_status;
 
+  if (!flextimus_prime.configuring) {
+    flextimus_prime_default_bounds();
+    flextimus_prime.configuring = true;
+    adc_start_continuous_conversion();
+    adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
+    gpio_on(CONFIG_LED);
+  } else {
+    /* TODO Done configuring, start the watchdog max and min values */
+    flextimus_prime.configuring = false;
+    adc_stop_continuous_conversion();
+    adc_awd_config(FLEX_SENSOR, flextimus_prime.adc.max,
+        flextimus_prime.adc.min, adc_awd_callback);
+    gpio_off(CONFIG_LED);
+  }
+}
 
+// IRQ handler for both button interrupts
+void button_irq_handler() {
+  if (gpio_asserted_irq(PAUSE_BUTTON)) {
+    flextimus_prime_pause_pressed();
+  } else if (gpio_asserted_irq(CONFIG_BUTTON)) {
+    flextimus_prime_config_pressed();
+  }
+}
