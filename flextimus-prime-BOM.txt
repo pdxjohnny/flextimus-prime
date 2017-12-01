@@ -42,3 +42,6 @@ TP7  TPB2,54           TPB2,54                         B2,54                    
 TP8  TPB2,54           TPB2,54                         B2,54                    Test pad                                                                                                                                                                                                                         
 U1   STM32F042KXU      STM32F042KXU                    UFQFPN32-5X5MM           STM32F042K6U6                                     Copyright C 2016 Accelerated Designs. All rights reserved stm32f042kxu                                                                                       STMicroelectronics
 U3   MCP1802T-3302I/OT MCP1802T-3302I/OT               SOT-23-5_MC                                                                                                                          MCP1802T3302IOT                                                                                    Microchip         
+LCD Screen - 16x2 3.3V (ST7066/HD44780)
+JTAG pin headers
+LCD screen pin headers
