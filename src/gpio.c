@@ -47,11 +47,11 @@ void gpio_down(gpio_pin_t gpio_pin) {
 }
 
 void gpio_on(gpio_pin_t gpio_pin) {
-  ((GPIO_TypeDef *)gpio_perf(gpio_pin))->BSRR = gpio_pin & GPIO_PIN_MASK;
+  ((GPIO_TypeDef *)gpio_perf(gpio_pin))->ODR |= (gpio_pin & GPIO_PIN_MASK);
 }
 
 void gpio_off(gpio_pin_t gpio_pin) {
-  ((GPIO_TypeDef *)gpio_perf(gpio_pin))->BRR = gpio_pin & GPIO_PIN_MASK;
+  ((GPIO_TypeDef *)gpio_perf(gpio_pin))->ODR &= ~(gpio_pin & GPIO_PIN_MASK);
 }
 
 /* Enables a GPIO pin as an input using the EXTI lines */
