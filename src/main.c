@@ -69,6 +69,12 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
 /* Called when the ADC is ready */
 adc_status_t adc_adrdy_callback() {
   flextimus_prime.adc.state = ADC_READY;
+
+  /* Start converting and keep converting forever */
+  adc_start_continuous_conversion();
+
+  adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
+
   return ADC_OK;
 }
 
@@ -137,11 +143,6 @@ int main(void) {
   delay(5000000);
   HD44780_Clear();*/
 
-  /* Start converting and keep converting forever */
-  adc_start_continuous_conversion();
-
-  adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
-
   while (running) {
     switch (flextimus_prime.state) {
     case FLEXTIMUS_PRIME_SLEEP:
@@ -156,6 +157,7 @@ int main(void) {
 
   adc_stop_continuous_conversion();
 
+  gpio_down(BUZZER);
   gpio_down(PAUSE_LED);
   gpio_down(CONFIG_LED);
 
