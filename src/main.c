@@ -24,6 +24,7 @@ typedef enum {
 struct {
   bool paused;
   bool configuring;
+  bool configured;
   struct {
     uint32_t max;
     uint32_t min;
@@ -54,7 +55,7 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
     } else if (adc_status.data < flextimus_prime.adc.min) {
       flextimus_prime.adc.min = adc_status.data;
     }
-  } else if (!flextimus_prime.paused) {
+  } else if (!flextimus_prime.paused && flextimus_prime.configured) {
     /* If we are not paused and are out of range then activate buzzer */
     if ((adc_status.data > flextimus_prime.adc.max) ||
         (adc_status.data < flextimus_prime.adc.min)) {
@@ -73,9 +74,7 @@ adc_status_t adc_adrdy_callback() {
   /* Start converting and keep converting forever */
   adc_start_continuous_conversion();
 
-  adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
-
-  return ADC_OK;
+  return adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
 }
 
 void flextimus_prime_default_bounds() {
@@ -84,6 +83,7 @@ void flextimus_prime_default_bounds() {
 }
 
 void flextimus_prime_init() {
+  flextimus_prime.configured = false;
   flextimus_prime.paused = false;
   flextimus_prime.configuring = false;
   flextimus_prime.adc.state = ADC_IDLE;
@@ -198,6 +198,7 @@ void flextimus_prime_config_pressed() {
     /* Done configuring, start the watchdog max and min values */
     flextimus_prime.configuring = false;
     gpio_off(CONFIG_LED);
+    flextimus_prime.configured = true;
   }
 }
 
