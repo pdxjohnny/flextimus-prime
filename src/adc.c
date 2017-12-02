@@ -228,7 +228,7 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
 
   /* Configure and enable ADC1 interrupt */
   NVIC_InitStructure.NVIC_IRQChannel = ADC1_COMP_IRQn;
-  NVIC_InitStructure.NVIC_IRQChannelPriority = 0;
+  NVIC_InitStructure.NVIC_IRQChannelPriority = 10;
   NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
   NVIC_Init(&NVIC_InitStructure);
 
