@@ -58,7 +58,7 @@ adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
     if ((adc_status.data > flextimus_prime.adc.max) ||
         (adc_status.data < flextimus_prime.adc.min)) {
       gpio_on(BUZZER);
-    } else {
+      delay(2000);
       gpio_off(BUZZER);
     }
   }
