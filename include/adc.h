@@ -11,12 +11,14 @@
 /* If we are in an interrupt and have checked once already then we need to
  * exit with a timeout to allow other interrupts to be serviced as quickly
  * as possible. */
-#define ADC_WITH_TIMEOUT(do_with_timeout)\
-  for (unsigned int i = 0; do_with_timeout; ++i) {\
+#define ADC_WITH_TIMEOUT(do_with_timeout)   { \
+  unsigned int i; \
+  for (i = 0; do_with_timeout; ++i) {\
     if ((adc_within_interrupt == true && i > 1) || i > ADC_TIMEOUT_TICKS) {\
       return ADC_TIMEOUT;\
     }\
-  }
+  } \
+}
 
 #define __ADC_CONV(X)                 (((X) * 3300) / 0xFFF)
 #define ADC_VOLTS(X)                  (__ADC_CONV(X) / 1000)
