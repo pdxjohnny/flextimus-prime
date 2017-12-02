@@ -11,13 +11,21 @@ tar extended-remote :4242
 load
 # Set breakpoints
 break *assert_failed
-break *flextimus_prime_pause_pressed
-break *flextimus_prime_config_pressed
+break *adc_adrdy_callback
+break *adc_convert_async_callback
 # Print backtrace when a breakpoint is hit
 # Re-enable pagination now that we are debugging
 command 1
 backtrace full
 set pagination on
+end
+command 2
+print flextimus_prime
+continue
+end
+command 3
+print flextimus_prime
+continue
 end
 # Run the kernel
 continue
