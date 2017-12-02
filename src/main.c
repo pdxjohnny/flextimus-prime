@@ -91,8 +91,6 @@ void configPins()
 	RCC_AHBENR |= BIT18;
 
   // Set Inputs
-  GPIOA_MODER |= BIT0; // Flex Sensor
-  GPIOA_MODER &= ~BIT1; // "" A0
   GPIOB_MODER |= BIT6; // BTN1 - Pause
   GPIOB_MODER &= ~BIT7; // "" B3
   GPIOB_MODER |= BIT8; // BTN2 - Config
