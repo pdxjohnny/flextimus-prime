@@ -5,6 +5,7 @@
 static bool adc_converting_continous;
 static bool adc_within_interrupt;
 static bool adc_converting;
+static bool adc_adrdy_hack;
 
 /* Staticly allocated statuses go here. */
 adc_status_t ADC_OK = {
@@ -90,13 +91,22 @@ void adc_handler() {
   adc_within_interrupt = true;
   if (ADC_GetITStatus(ADC1, ADC_IT_ADRDY) == SET) {
     ADC_ClearITPendingBit(ADC1, ADC_IT_ADRDY);
-    if (adc_adrdy_handler != NULL) {
+    if (adc_adrdy_hack && adc_adrdy_handler != NULL) {
+      adc_adrdy_hack = false;
       adc_adrdy_handler();
     }
   } else if (ADC_GetITStatus(ADC1, ADC_IT_EOC) == SET &&
       adc_conversion_complete != NULL) {
     ADC_ClearITPendingBit(ADC1, ADC_IT_EOC);
-    adc_conversion_complete(adc_read());
+    /* We don't get the ADRDY interrupt the first time sometimes. Therefore we
+     * trigger an initial conversion and use its completion to know that we are
+     * ready to go. */
+    if (adc_adrdy_hack && adc_adrdy_handler != NULL) {
+      adc_adrdy_hack = false;
+      adc_adrdy_handler();
+    } else {
+      adc_conversion_complete(adc_read());
+    }
     if (!adc_converting_continous) {
       /* ADC1 regular Software Stop Conv */
       ADC_StopOfConversion(ADC1);
@@ -185,10 +195,12 @@ adc_status_t adc_awd_config(gpio_pin_t gpio_pin, int start, int stop,
 
 adc_status_t adc_up(gpio_pin_t gpio_pin,
     adc_status_t (*set_adc_adrdy_handler)()) {
+  adc_status_t status;
   ADC_InitTypeDef     ADC_InitStructure;
   GPIO_InitTypeDef    GPIO_InitStructure;
   NVIC_InitTypeDef    NVIC_InitStructure;
 
+  adc_adrdy_hack = true;
   adc_converting_continous = false;
   adc_conversion_complete = NULL;
   adc_adrdy_handler = set_adc_adrdy_handler;
@@ -238,7 +250,15 @@ adc_status_t adc_up(gpio_pin_t gpio_pin,
   /* Enable the ADC peripheral */
   ADC_Cmd(ADC1, ENABLE);
 
-  return ADC_OK;
+  /* (4) Enable interrupts on EOC (End Of Conversion) */
+  ADC_ITConfig(ADC1, ADC_IT_EOC, ENABLE);
+
+  /* Start converting */
+  status = adc_start_converting();
+  if (ADC_ERROR(status)) {
+    return status;
+  }
+  return status;
 }
 
 adc_status_t adc_down(gpio_pin_t gpio_pin) {

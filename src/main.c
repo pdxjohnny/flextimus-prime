@@ -127,6 +127,7 @@ int main(void) {
   gpio_input(PAUSE_BUTTON);
   gpio_input(CONFIG_BUTTON);
 */
+
   adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
@@ -144,6 +145,25 @@ int main(void) {
   HD44780_Clear();*/
 
   while (running) {
+    adc_status = adc_read();
+    flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
+    flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
+    if (flextimus_prime.configuring) {
+      /* Configure */
+      if (adc_status.data > flextimus_prime.adc.max) {
+        flextimus_prime.adc.max = adc_status.data;
+      } else if (adc_status.data < flextimus_prime.adc.min) {
+        flextimus_prime.adc.min = adc_status.data;
+      }
+    } else if (!flextimus_prime.paused && flextimus_prime.configured) {
+      /* If we are not paused and are out of range then activate buzzer */
+      if ((adc_status.data > flextimus_prime.adc.max) ||
+          (adc_status.data < flextimus_prime.adc.min)) {
+        gpio_on(BUZZER);
+      } else {
+        gpio_off(BUZZER);
+      }
+    }
     switch (flextimus_prime.state) {
     case FLEXTIMUS_PRIME_SLEEP:
       PWR_EnterSleepMode(PWR_SLEEPEntry_WFI);
