@@ -3,6 +3,7 @@
 #include <flextimus.h>
 #include "config.h"
 #include "hd44780.h"
+#include <stm32f042.h>
 
 /* The state of Flextimus Prime. This controls the main loop. */
 typedef enum {
@@ -82,18 +83,44 @@ void flextimus_prime_init() {
   flextimus_prime.adc.state = ADC_IDLE;
 }
 
+void configPins()
+{
+	// Power up PORTA
+	RCC_AHBENR |= BIT17;
+	// Power up PORTB
+	RCC_AHBENR |= BIT18;
+
+  // Set Inputs
+  GPIOA_MODER |= BIT0; // Flex Sensor
+  GPIOA_MODER &= ~BIT1; // "" A0
+  GPIOB_MODER |= BIT6; // BTN1 - Pause
+  GPIOB_MODER &= ~BIT7; // "" B3
+  GPIOB_MODER |= BIT8; // BTN2 - Config
+  GPIOB_MODER &= ~BIT9; // "" B4
+
+  // Set Outputs
+  GPIOA_MODER |= BIT4; // Buzzer
+  GPIOA_MODER &= ~BIT5; // "" A2
+  GPIOB_MODER |= BIT0; // LED1 - Pause
+  GPIOB_MODER &= ~BIT1; // "" B0
+  GPIOB_MODER |= BIT2; // LED2 - Config
+  GPIOB_MODER &= ~BIT3; // "" B1
+}
+
 int main(void) {
   bool running = true;
   adc_status_t adc_status;
 
   __enable_irq();
 
+  configPins();
+  /*
   gpio_up(PAUSE_LED);
   gpio_up(CONFIG_LED);
 
   gpio_input(PAUSE_BUTTON);
   gpio_input(CONFIG_BUTTON);
-
+*/
   adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
