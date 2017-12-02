@@ -103,6 +103,8 @@ void configPins()
   GPIOB_MODER &= ~BIT1; // "" B0
   GPIOB_MODER |= BIT2; // LED2 - Config
   GPIOB_MODER &= ~BIT3; // "" B1
+
+  gpio_off(BUZZER);
 }
 
 int main(void) {
