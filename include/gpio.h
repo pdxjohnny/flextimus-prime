@@ -14,6 +14,7 @@ typedef uint32_t gpio_pin_t;
 
 /* All GPIO pins fit within the lower 16 bits. */
 #define GPIO_PIN_MASK     0x0000FFFF
+#define GPIO_A0           (GPIO_A | GPIO_Pin_0)
 #define GPIO_A2           (GPIO_A | GPIO_Pin_2)
 #define GPIO_B0           (GPIO_B | GPIO_Pin_0)
 #define GPIO_B1           (GPIO_B | GPIO_Pin_1)
