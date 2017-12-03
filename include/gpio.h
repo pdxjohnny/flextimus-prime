@@ -14,11 +14,19 @@ typedef uint32_t gpio_pin_t;
 
 /* All GPIO pins fit within the lower 16 bits. */
 #define GPIO_PIN_MASK     0x0000FFFF
+#define GPIO_A0           (GPIO_A | GPIO_Pin_0)
 #define GPIO_A2           (GPIO_A | GPIO_Pin_2)
 #define GPIO_B0           (GPIO_B | GPIO_Pin_0)
 #define GPIO_B1           (GPIO_B | GPIO_Pin_1)
 #define GPIO_B3           (GPIO_B | GPIO_Pin_3)
 #define GPIO_B4           (GPIO_B | GPIO_Pin_4)
+
+#define DEBOUNCE_DELAY    750
+
+typedef struct {
+  unsigned int tick;
+  uint32_t value;
+} debouncer_t;
 
 void* gpio_perf(gpio_pin_t gpio_pin);
 void gpio_clock(gpio_pin_t gpio_pin, FunctionalState NewState);
@@ -28,7 +36,9 @@ void gpio_down(gpio_pin_t gpio_pin);
 void gpio_on(gpio_pin_t gpio_pin);
 void gpio_off(gpio_pin_t gpio_pin);
 void gpio_input(gpio_pin_t gpio_pin);
-int gpio_asserted(gpio_pin_t gpio_pin);
+bool gpio_asserted(gpio_pin_t gpio_pin);
+void debounce_init(debouncer_t *debounce);
+bool gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce);
 bool gpio_asserted_irq(gpio_pin_t gpio_pin);
 
 #endif /* _GPIO_H_ */
