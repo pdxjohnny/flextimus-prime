@@ -5,6 +5,8 @@
 #include "hd44780.h"
 #include <stm32f042.h>
 
+#define BUZZER_TIMEOUT 1000
+
 /* The state of Flextimus Prime. This controls the main loop. */
 typedef enum {
   FLEXTIMUS_PRIME_ON,
@@ -25,6 +27,8 @@ struct {
   bool paused;
   bool configuring;
   bool configured;
+  bool buzzer_timedout;
+  unsigned int buzzer_timeout;
   struct {
     uint32_t max;
     uint32_t min;
@@ -35,46 +39,10 @@ struct {
   flextimus_prime_state_t state;
 } flextimus_prime;
 
+void adc_null_callback() {}
+
 void assert_failed(uint8_t* file, uint32_t line) {
   while (1) {}
-}
-
-void delay(int dly) {
-  while (dly--);
-}
-
-/* Called when the ADC finishes a conversion */
-adc_status_t adc_convert_async_callback(adc_status_t adc_status) {
-  bool should_buzzer;
-  flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
-  flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
-  if (flextimus_prime.configuring) {
-    /* Configure */
-    if (adc_status.data > flextimus_prime.adc.max) {
-      flextimus_prime.adc.max = adc_status.data;
-    } else if (adc_status.data < flextimus_prime.adc.min) {
-      flextimus_prime.adc.min = adc_status.data;
-    }
-  } else if (!flextimus_prime.paused && flextimus_prime.configured) {
-    /* If we are not paused and are out of range then activate buzzer */
-    if ((adc_status.data > flextimus_prime.adc.max) ||
-        (adc_status.data < flextimus_prime.adc.min)) {
-      gpio_on(BUZZER);
-    } else {
-      gpio_off(BUZZER);
-    }
-  }
-  return ADC_OK;
-}
-
-/* Called when the ADC is ready */
-adc_status_t adc_adrdy_callback() {
-  flextimus_prime.adc.state = ADC_READY;
-
-  /* Start converting and keep converting forever */
-  adc_start_continuous_conversion();
-
-  return adc_convert_async(FLEX_SENSOR, adc_convert_async_callback);
 }
 
 void flextimus_prime_default_bounds() {
@@ -86,23 +54,33 @@ void flextimus_prime_init() {
   flextimus_prime.configured = false;
   flextimus_prime.paused = false;
   flextimus_prime.configuring = false;
+  flextimus_prime.buzzer_timeout = 0;
+  flextimus_prime.buzzer_timedout = false;
   flextimus_prime.adc.state = ADC_IDLE;
 }
 
-void configPins()
-{
+void configure_gpios() {
 	// Power up PORTA
 	RCC_AHBENR |= BIT17;
 	// Power up PORTB
 	RCC_AHBENR |= BIT18;
 
   // Set Inputs
+  /*
+  gpio_input(PAUSE_BUTTON);
+  gpio_input(CONFIG_BUTTON);
+  */
   GPIOB_MODER |= BIT6; // BTN1 - Pause
   GPIOB_MODER &= ~BIT7; // "" B3
   GPIOB_MODER |= BIT8; // BTN2 - Config
   GPIOB_MODER &= ~BIT9; // "" B4
 
   // Set Outputs
+  /*
+  gpio_up(BUZZER);
+  gpio_up(PAUSE_LED);
+  gpio_up(CONFIG_LED);
+  */
   GPIOA_MODER |= BIT4; // Buzzer
   GPIOA_MODER &= ~BIT5; // "" A2
   GPIOB_MODER |= BIT0; // LED1 - Pause
@@ -114,18 +92,16 @@ void configPins()
 int main(void) {
   bool running = true;
   adc_status_t adc_status;
+  debouncer_t debounce_pause, debounce_config;
 
-  __enable_irq();
+  debounce_init(&debounce_pause);
+  debounce_init(&debounce_config);
 
-  configPins();
-  /*
-  gpio_up(PAUSE_LED);
-  gpio_up(CONFIG_LED);
+  __disable_irq();
 
-  gpio_input(PAUSE_BUTTON);
-  gpio_input(CONFIG_BUTTON);
-*/
-  adc_status = adc_up(FLEX_SENSOR, adc_adrdy_callback);
+  configure_gpios();
+
+  adc_status = adc_up(FLEX_SENSOR, adc_null_callback);
   if (ADC_ERROR(adc_status)) {
     assert_failed(__FILE__, __LINE__);
   }
@@ -141,25 +117,50 @@ int main(void) {
   delay(5000000);
   HD44780_Clear();*/
 
+  gpio_off(BUZZER);
+  gpio_off(PAUSE_LED);
+  gpio_off(CONFIG_LED);
+
   while (running) {
+    /* Read from ADC forever */
     adc_status = adc_read();
+    /* Set the volts and millivolts for our debugging convenience in GDB */
     flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
     flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
+    /* Button press handlers */
+    if (gpio_asserted_debounce(PAUSE_BUTTON, &debounce_pause)) {
+      flextimus_prime_pause_pressed();
+    } else if (gpio_asserted_debounce(CONFIG_BUTTON, &debounce_config)) {
+      flextimus_prime_config_pressed();
+    }
+    /* Configuration */
     if (flextimus_prime.configuring) {
-      /* Configure */
       if (adc_status.data > flextimus_prime.adc.max) {
         flextimus_prime.adc.max = adc_status.data;
       } else if (adc_status.data < flextimus_prime.adc.min) {
         flextimus_prime.adc.min = adc_status.data;
       }
-    } else if (!flextimus_prime.paused && flextimus_prime.configured) {
-      /* If we are not paused and are out of range then activate buzzer */
-      if ((adc_status.data > flextimus_prime.adc.max) ||
-          (adc_status.data < flextimus_prime.adc.min)) {
-        gpio_on(BUZZER);
-      } else {
-        gpio_off(BUZZER);
-      }
+    }
+    /* If we are not paused and are out of range then activate buzzer
+     * If we have not timed out the buzzer and we are ready to start another
+     * buzzer timeout run (config button press sets
+     * flextimus_prime.buzzer_timeout to 0) */
+    if (((adc_status.data > flextimus_prime.adc.max) ||
+        (adc_status.data < flextimus_prime.adc.min)) &&
+        !flextimus_prime.buzzer_timedout &&
+        flextimus_prime.buzzer_timeout == 0 &&
+        !flextimus_prime.paused && flextimus_prime.configured) {
+      gpio_on(BUZZER);
+      gpio_on(PAUSE_LED);
+    } else {
+      gpio_off(BUZZER);
+      gpio_off(PAUSE_LED);
+    }
+    if (!flextimus_prime.buzzer_timedout &&
+        flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
+      flextimus_prime.buzzer_timedout = true;
+    } else {
+      ++flextimus_prime.buzzer_timeout;
     }
     switch (flextimus_prime.state) {
     case FLEXTIMUS_PRIME_SLEEP:
@@ -171,8 +172,6 @@ int main(void) {
       continue;
     }
   }
-
-  adc_stop_continuous_conversion();
 
   gpio_down(BUZZER);
   gpio_down(PAUSE_LED);
@@ -209,6 +208,8 @@ void flextimus_prime_config_pressed() {
   if (!flextimus_prime.configuring) {
     /* Start configuring */
     flextimus_prime_default_bounds();
+    flextimus_prime.buzzer_timeout = 0;
+    flextimus_prime.buzzer_timedout = false;
     flextimus_prime.configuring = true;
     gpio_on(CONFIG_LED);
   } else {

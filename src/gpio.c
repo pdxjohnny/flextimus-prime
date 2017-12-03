@@ -112,3 +112,20 @@ bool gpio_asserted_irq(gpio_pin_t gpio_pin) {
   }
   return false;
 }
+
+void debounce_init(debouncer_t *debounce) {
+  debounce->tick = 0;
+  debounce->value = 0;
+}
+
+int gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce) {
+  if (debounce->tick == 0) {
+    debounce->value = GPIO_ReadInputDataBit(gpio_perf(gpio_pin),
+        gpio_pin & GPIO_PIN_MASK);
+  }
+  ++debounce->tick;
+  if (debounce->tick > DEBOUNCE_DELAY) {
+    debounce->tick = 0;
+  }
+  return debounce->value;
+}
