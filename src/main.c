@@ -150,8 +150,7 @@ int main(void) {
     if (((flextimus_prime.adc.curr < flextimus_prime.adc.max) &&
         (flextimus_prime.adc.curr > flextimus_prime.adc.min)) ||
         flextimus_prime.buzzer_timedout == true) {
-      // gpio_off(BUZZER);
-      gpio_off(CONFIG_LED);
+      gpio_off(BUZZER);
     } else if ((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
         (flextimus_prime.adc.curr < flextimus_prime.adc.min)) {
       ++flextimus_prime.buzzer_timeout;
@@ -160,8 +159,7 @@ int main(void) {
       }
       if (flextimus_prime.paused == false &&
           flextimus_prime.buzzer_timedout == false) {
-        // gpio_on(BUZZER);
-        gpio_on(CONFIG_LED);
+        gpio_on(BUZZER);
         flextimus_prime.buzzer_timedout = false;
         flextimus_prime.buzzer_timeout = 0;
       }
@@ -215,10 +213,10 @@ void flextimus_prime_config_pressed() {
     flextimus_prime.buzzer_timeout = 0;
     flextimus_prime.buzzer_timedout = false;
     flextimus_prime.configuring = true;
-    // gpio_on(CONFIG_LED);
+    gpio_on(CONFIG_LED);
   } else {
     flextimus_prime.configuring = false;
-    // gpio_off(CONFIG_LED);
+    gpio_off(CONFIG_LED);
   }
 }
 
