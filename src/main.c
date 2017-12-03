@@ -5,8 +5,6 @@
 #include "hd44780.h"
 #include <stm32f042.h>
 
-#define BUZZER_TIMEOUT 1000
-
 /* The state of Flextimus Prime. This controls the main loop. */
 typedef enum {
   FLEXTIMUS_PRIME_ON,
@@ -26,7 +24,6 @@ typedef enum {
 struct {
   bool paused;
   bool configuring;
-  bool configured;
   bool buzzer_timedout;
   unsigned int buzzer_timeout;
   struct {
@@ -46,16 +43,17 @@ void assert_failed(uint8_t* file, uint32_t line) {
 }
 
 void flextimus_prime_default_bounds() {
-  flextimus_prime.adc.min = 2000;
-  flextimus_prime.adc.max = 2000;
+  flextimus_prime.adc.min = DEFAULT_MIN;
+  flextimus_prime.adc.max = DEFAULT_MAX;
 }
 
 void flextimus_prime_init() {
-  flextimus_prime.configured = false;
   flextimus_prime.paused = false;
   flextimus_prime.configuring = false;
   flextimus_prime.buzzer_timeout = 0;
   flextimus_prime.buzzer_timedout = false;
+  flextimus_prime.adc.max = DEFAULT_MAX;
+  flextimus_prime.adc.min = DEFAULT_MIN;
   flextimus_prime.adc.state = ADC_IDLE;
 }
 
@@ -134,33 +132,34 @@ int main(void) {
       flextimus_prime_config_pressed();
     }
     /* Configuration */
-    if (flextimus_prime.configuring) {
+    if (flextimus_prime.configuring == true) {
       if (adc_status.data > flextimus_prime.adc.max) {
         flextimus_prime.adc.max = adc_status.data;
       } else if (adc_status.data < flextimus_prime.adc.min) {
         flextimus_prime.adc.min = adc_status.data;
       }
-    }
-    /* If we are not paused and are out of range then activate buzzer
-     * If we have not timed out the buzzer and we are ready to start another
-     * buzzer timeout run (config button press sets
-     * flextimus_prime.buzzer_timeout to 0) */
-    if (((adc_status.data > flextimus_prime.adc.max) ||
-        (adc_status.data < flextimus_prime.adc.min)) &&
-        !flextimus_prime.buzzer_timedout &&
-        flextimus_prime.buzzer_timeout == 0 &&
-        !flextimus_prime.paused && flextimus_prime.configured) {
-      gpio_on(BUZZER);
-      gpio_on(PAUSE_LED);
     } else {
-      gpio_off(BUZZER);
-      gpio_off(PAUSE_LED);
-    }
-    if (!flextimus_prime.buzzer_timedout &&
-        flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
-      flextimus_prime.buzzer_timedout = true;
-    } else {
-      ++flextimus_prime.buzzer_timeout;
+      /* If we are within range OR set to defaults OR timed out then turn off the
+       * buzzer */
+      if ((flextimus_prime.adc.max == DEFAULT_MAX ||
+          flextimus_prime.adc.min == DEFAULT_MIN) ||
+          ((adc_status.data < flextimus_prime.adc.max) &&
+          (adc_status.data > flextimus_prime.adc.min)) ||
+          flextimus_prime.buzzer_timedout == true) {
+        // gpio_off(BUZZER);
+        gpio_off(CONFIG_LED);
+      } else if (((adc_status.data > flextimus_prime.adc.max) ||
+          (adc_status.data < flextimus_prime.adc.min))) {
+        if (!flextimus_prime.buzzer_timedout == true) {
+          ++flextimus_prime.buzzer_timeout;
+        }
+        if (flextimus_prime.paused == true) {
+          // gpio_on(BUZZER);
+          gpio_on(CONFIG_LED);
+          flextimus_prime.buzzer_timedout = false;
+          flextimus_prime.buzzer_timeout = 0;
+        }
+      }
     }
     switch (flextimus_prime.state) {
     case FLEXTIMUS_PRIME_SLEEP:
@@ -193,7 +192,7 @@ int main(void) {
 
 // Function to pause the alert system
 void flextimus_prime_pause_pressed() {
-  if (!flextimus_prime.paused) {
+  if (flextimus_prime.paused == false) {
     flextimus_prime.paused = true;
     gpio_on(PAUSE_LED);
   } else {
@@ -205,18 +204,16 @@ void flextimus_prime_pause_pressed() {
 void flextimus_prime_config_pressed() {
   adc_status_t adc_status;
 
-  if (!flextimus_prime.configuring) {
+  if (flextimus_prime.configuring == false) {
     /* Start configuring */
     flextimus_prime_default_bounds();
     flextimus_prime.buzzer_timeout = 0;
     flextimus_prime.buzzer_timedout = false;
     flextimus_prime.configuring = true;
-    gpio_on(CONFIG_LED);
+    // gpio_on(CONFIG_LED);
   } else {
-    /* Done configuring, start the watchdog max and min values */
     flextimus_prime.configuring = false;
-    gpio_off(CONFIG_LED);
-    flextimus_prime.configured = true;
+    // gpio_off(CONFIG_LED);
   }
 }
 
