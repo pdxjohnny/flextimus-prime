@@ -29,6 +29,7 @@ struct {
   struct {
     uint32_t max;
     uint32_t min;
+    uint32_t curr;
     uint32_t volts;
     uint32_t millivolts;
     adc_state_t state;
@@ -43,8 +44,8 @@ void assert_failed(uint8_t* file, uint32_t line) {
 }
 
 void flextimus_prime_default_bounds() {
-  flextimus_prime.adc.min = DEFAULT_MIN;
-  flextimus_prime.adc.max = DEFAULT_MAX;
+  flextimus_prime.adc.min = flextimus_prime.adc.curr;
+  flextimus_prime.adc.max = flextimus_prime.adc.curr;
 }
 
 void flextimus_prime_init() {
@@ -52,9 +53,9 @@ void flextimus_prime_init() {
   flextimus_prime.configuring = false;
   flextimus_prime.buzzer_timeout = 0;
   flextimus_prime.buzzer_timedout = false;
-  flextimus_prime.adc.max = DEFAULT_MAX;
-  flextimus_prime.adc.min = DEFAULT_MIN;
   flextimus_prime.adc.state = ADC_IDLE;
+  flextimus_prime.adc.min = DEFAULT_MIN;
+  flextimus_prime.adc.max = DEFAULT_MAX;
 }
 
 void configure_gpios() {
@@ -88,12 +89,15 @@ void configure_gpios() {
 }
 
 int main(void) {
+  unsigned int curr;
   bool running = true;
   adc_status_t adc_status;
   debouncer_t debounce_pause, debounce_config;
 
   debounce_init(&debounce_pause);
   debounce_init(&debounce_config);
+
+  flextimus_prime_init();
 
   __disable_irq();
 
@@ -122,9 +126,10 @@ int main(void) {
   while (running) {
     /* Read from ADC forever */
     adc_status = adc_read();
+    flextimus_prime.adc.curr = adc_status.data;
     /* Set the volts and millivolts for our debugging convenience in GDB */
-    flextimus_prime.adc.volts = ADC_VOLTS(adc_status.data);
-    flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(adc_status.data);
+    flextimus_prime.adc.volts = ADC_VOLTS(flextimus_prime.adc.curr);
+    flextimus_prime.adc.millivolts = ADC_MILLIVOLTS(flextimus_prime.adc.curr);
     /* Button press handlers */
     if (gpio_asserted_debounce(PAUSE_BUTTON, &debounce_pause)) {
       flextimus_prime_pause_pressed();
@@ -133,32 +138,32 @@ int main(void) {
     }
     /* Configuration */
     if (flextimus_prime.configuring == true) {
-      if (adc_status.data > flextimus_prime.adc.max) {
-        flextimus_prime.adc.max = adc_status.data;
-      } else if (adc_status.data < flextimus_prime.adc.min) {
-        flextimus_prime.adc.min = adc_status.data;
+      if (flextimus_prime.adc.curr > flextimus_prime.adc.max) {
+        flextimus_prime.adc.max = flextimus_prime.adc.curr;
       }
-    } else {
-      /* If we are within range OR set to defaults OR timed out then turn off the
-       * buzzer */
-      if ((flextimus_prime.adc.max == DEFAULT_MAX ||
-          flextimus_prime.adc.min == DEFAULT_MIN) ||
-          ((adc_status.data < flextimus_prime.adc.max) &&
-          (adc_status.data > flextimus_prime.adc.min)) ||
-          flextimus_prime.buzzer_timedout == true) {
-        // gpio_off(BUZZER);
-        gpio_off(CONFIG_LED);
-      } else if (((adc_status.data > flextimus_prime.adc.max) ||
-          (adc_status.data < flextimus_prime.adc.min))) {
-        if (!flextimus_prime.buzzer_timedout == true) {
-          ++flextimus_prime.buzzer_timeout;
-        }
-        if (flextimus_prime.paused == true) {
-          // gpio_on(BUZZER);
-          gpio_on(CONFIG_LED);
-          flextimus_prime.buzzer_timedout = false;
-          flextimus_prime.buzzer_timeout = 0;
-        }
+      if (flextimus_prime.adc.curr < flextimus_prime.adc.min) {
+        flextimus_prime.adc.min = flextimus_prime.adc.curr;
+      }
+    }
+    /* If we are within range OR set to defaults OR timed out then turn off the
+     * buzzer */
+    if (((flextimus_prime.adc.curr < flextimus_prime.adc.max) &&
+        (flextimus_prime.adc.curr > flextimus_prime.adc.min)) ||
+        flextimus_prime.buzzer_timedout == true) {
+      // gpio_off(BUZZER);
+      gpio_off(CONFIG_LED);
+    } else if ((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
+        (flextimus_prime.adc.curr < flextimus_prime.adc.min)) {
+      ++flextimus_prime.buzzer_timeout;
+      if (flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
+        flextimus_prime.buzzer_timedout = true;
+      }
+      if (flextimus_prime.paused == false &&
+          flextimus_prime.buzzer_timedout == false) {
+        // gpio_on(BUZZER);
+        gpio_on(CONFIG_LED);
+        flextimus_prime.buzzer_timedout = false;
+        flextimus_prime.buzzer_timeout = 0;
       }
     }
     switch (flextimus_prime.state) {

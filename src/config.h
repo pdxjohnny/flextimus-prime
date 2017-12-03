@@ -14,7 +14,7 @@
 /* Buzzer only allowed to be on for so long while configuring */
 #define BUZZER_TIMEOUT 1000
 
-#define DEFAULT_MIN    2000
-#define DEFAULT_MAX    2000
+#define DEFAULT_MIN    1200
+#define DEFAULT_MAX    1400
 
 #endif /* _CONFIG_H_ */

@@ -101,16 +101,16 @@ void gpio_input(gpio_pin_t gpio_pin) {
   NVIC_Init(&NVIC_InitStructure);
 }
 
-int gpio_asserted(gpio_pin_t gpio_pin) {
-  return GPIO_ReadInputDataBit(gpio_perf(gpio_pin), gpio_pin & GPIO_PIN_MASK);
+bool gpio_asserted(gpio_pin_t gpio_pin) {
+  return !!(GPIO_ReadInputDataBit(gpio_perf(gpio_pin), gpio_pin & GPIO_PIN_MASK));
 }
 
 bool gpio_asserted_irq(gpio_pin_t gpio_pin) {
   if (EXTI_GetITStatus(gpio_pin & GPIO_PIN_MASK) != RESET) {
     EXTI_ClearITPendingBit(gpio_pin & GPIO_PIN_MASK);
-    return gpio_asserted(gpio_pin);
+    return !!(gpio_asserted(gpio_pin));
   }
-  return false;
+  return !!(false);
 }
 
 void debounce_init(debouncer_t *debounce) {
@@ -118,14 +118,14 @@ void debounce_init(debouncer_t *debounce) {
   debounce->value = 0;
 }
 
-int gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce) {
-  if (debounce->tick == 0) {
-    debounce->value = GPIO_ReadInputDataBit(gpio_perf(gpio_pin),
-        gpio_pin & GPIO_PIN_MASK);
-  }
-  ++debounce->tick;
+bool gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce) {
   if (debounce->tick > DEBOUNCE_DELAY) {
     debounce->tick = 0;
   }
-  return debounce->value;
+  if (debounce->tick == 0) {
+    return !!(GPIO_ReadInputDataBit(gpio_perf(gpio_pin),
+          gpio_pin & GPIO_PIN_MASK));
+  }
+  ++debounce->tick;
+  return !!(false);
 }

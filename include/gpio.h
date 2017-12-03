@@ -21,7 +21,7 @@ typedef uint32_t gpio_pin_t;
 #define GPIO_B3           (GPIO_B | GPIO_Pin_3)
 #define GPIO_B4           (GPIO_B | GPIO_Pin_4)
 
-#define DEBOUNCE_DELAY    1000
+#define DEBOUNCE_DELAY    750
 
 typedef struct {
   unsigned int tick;
@@ -36,9 +36,9 @@ void gpio_down(gpio_pin_t gpio_pin);
 void gpio_on(gpio_pin_t gpio_pin);
 void gpio_off(gpio_pin_t gpio_pin);
 void gpio_input(gpio_pin_t gpio_pin);
-int gpio_asserted(gpio_pin_t gpio_pin);
+bool gpio_asserted(gpio_pin_t gpio_pin);
 void debounce_init(debouncer_t *debounce);
-int gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce);
+bool gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce);
 bool gpio_asserted_irq(gpio_pin_t gpio_pin);
 
 #endif /* _GPIO_H_ */
