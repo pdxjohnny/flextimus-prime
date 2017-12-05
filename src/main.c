@@ -203,6 +203,7 @@ void flextimus_prime_pause_pressed() {
     flextimus_prime.paused = false;
     gpio_off(PAUSE_LED);
   }
+  Delay(100000);
 }
 
 void flextimus_prime_config_pressed() {
@@ -219,6 +220,7 @@ void flextimus_prime_config_pressed() {
     flextimus_prime.configuring = false;
     gpio_off(CONFIG_LED);
   }
+  Delay(100000);
 }
 
 // IRQ handler for both button interrupts
