@@ -126,6 +126,6 @@ bool gpio_asserted_debounce(gpio_pin_t gpio_pin, debouncer_t *debounce) {
     return !!(GPIO_ReadInputDataBit(gpio_perf(gpio_pin),
           gpio_pin & GPIO_PIN_MASK));
   }
-  ++(debounce->tick);
+  ++debounce->tick;
   return !!(false);
 }

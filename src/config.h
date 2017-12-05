@@ -12,7 +12,7 @@
 #define BUZZER              GPIO_A2
 
 /* Buzzer only allowed to be on for so long while configuring */
-#define BUZZER_TIMEOUT 1000
+#define BUZZER_TIMEOUT 500
 
 #define DEFAULT_MIN    1200
 #define DEFAULT_MAX    1400

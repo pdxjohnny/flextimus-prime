@@ -88,6 +88,8 @@ void configure_gpios() {
   GPIOB_MODER &= ~BIT3; // "" B1
 }
 
+bool LCD_Written = false;
+
 int main(void) {
   unsigned int curr;
   bool running = true;
@@ -113,10 +115,11 @@ int main(void) {
 
   HD44780_Setup();
   HD44780_PowerOn();
-  HD44780_Puts((uint8_t *)"Test1!");
+  HD44780_Clear();
+  HD44780_Puts((uint8_t *)"Mode: Standby");
   //Delay(5000000);
-  HD44780_GotoXY(2,1);
-  HD44780_Puts((uint8_t *)"Test1!");
+  HD44780_GotoXY(0,1);
+  HD44780_Puts((uint8_t *)"Please Configure");
   //Delay(5000000);
   //HD44780_Clear();
 
@@ -152,6 +155,16 @@ int main(void) {
         (flextimus_prime.adc.curr > flextimus_prime.adc.min)) ||
         flextimus_prime.buzzer_timedout == true) {
       gpio_off(BUZZER);
+      
+      if (!LCD_Written)
+      {
+        HD44780_Clear();
+        HD44780_GotoXY(6,0);
+        HD44780_Puts((uint8_t *)"Mode: Monitor");
+        HD44780_GotoXY(0,1);
+        HD44780_Puts((uint8_t *)"In Range");
+        LCD_Written = true;
+      }
     } else if ((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
         (flextimus_prime.adc.curr < flextimus_prime.adc.min)) {
       ++flextimus_prime.buzzer_timeout;
@@ -163,6 +176,13 @@ int main(void) {
         gpio_on(BUZZER);
         flextimus_prime.buzzer_timedout = false;
         flextimus_prime.buzzer_timeout = 0;
+        
+        HD44780_Clear();
+        HD44780_GotoXY(6,0);
+        HD44780_Puts((uint8_t *)"Mode: Monitor");
+        HD44780_GotoXY(0,1);
+        HD44780_Puts((uint8_t *)"Bad posture");
+        LCD_Written = false;
       }
     }
     switch (flextimus_prime.state) {
@@ -196,29 +216,57 @@ int main(void) {
 
 // Function to pause the alert system
 void flextimus_prime_pause_pressed() {
-  if (flextimus_prime.paused == false) {
+  if (flextimus_prime.paused == false) { 
+    
+    HD44780_Clear();
+    HD44780_GotoXY(6,0);
+    HD44780_Puts((uint8_t *)"Mode: Paused");
+    HD44780_GotoXY(0,1);
+    HD44780_Puts((uint8_t *)"Peace and quiet");
     flextimus_prime.paused = true;
     gpio_on(PAUSE_LED);
-  } else {
-    flextimus_prime.paused = false;
+  } else { 
+ 
+    /*HD44780_Clear();
+    HD44780_GotoXY(6,0);
+    HD44780_Puts((uint8_t *)"Mode: Monitor");
+    HD44780_GotoXY(0,1);
+    HD44780_Puts((uint8_t *)"In Range");
+    flextimus_prime.paused = false;*/
     gpio_off(PAUSE_LED);
+    LCD_Written = false;
   }
+  Delay(100000);
 }
 
 void flextimus_prime_config_pressed() {
   adc_status_t adc_status;
 
   if (flextimus_prime.configuring == false) {
+
+    HD44780_Clear();
+    HD44780_GotoXY(6,0);
+    HD44780_Puts((uint8_t *)"Mode: Configure");
+    HD44780_GotoXY(0,1);
+    HD44780_Puts((uint8_t *)"Configuring");
     /* Start configuring */
     flextimus_prime_default_bounds();
     flextimus_prime.buzzer_timeout = 0;
     flextimus_prime.buzzer_timedout = false;
     flextimus_prime.configuring = true;
     gpio_on(CONFIG_LED);
-  } else {
+  } else { 
+    
+   /* HD44780_Clear();
+    HD44780_GotoXY(6,0);
+    HD44780_Puts((uint8_t *)"Mode: Monitor");
+    HD44780_GotoXY(0,1);
+    HD44780_Puts((uint8_t *)"In Range");*/
     flextimus_prime.configuring = false;
     gpio_off(CONFIG_LED);
+    LCD_Written = false;
   }
+  Delay(100000);
 }
 
 // IRQ handler for both button interrupts
