@@ -89,6 +89,7 @@ void configure_gpios() {
 }
 
 bool LCD_Written = false;
+bool bad_posture_message = false;
 
 int main(void) {
   unsigned int curr;
@@ -155,7 +156,7 @@ int main(void) {
         (flextimus_prime.adc.curr > flextimus_prime.adc.min)) ||
         flextimus_prime.buzzer_timedout == true) {
       gpio_off(BUZZER);
-      
+      bad_posture_message = false;
       if (!LCD_Written)
       {
         HD44780_Clear();
@@ -165,8 +166,9 @@ int main(void) {
         HD44780_Puts((uint8_t *)"In Range");
         LCD_Written = true;
       }
-    } else if ((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
-        (flextimus_prime.adc.curr < flextimus_prime.adc.min)) {
+    } else if (((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
+              (flextimus_prime.adc.curr < flextimus_prime.adc.min))  &&
+              flextimus_prime.paused == false) {
       ++flextimus_prime.buzzer_timeout;
       if (flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
         flextimus_prime.buzzer_timedout = true;
@@ -177,12 +179,16 @@ int main(void) {
         flextimus_prime.buzzer_timedout = false;
         flextimus_prime.buzzer_timeout = 0;
         
-        HD44780_Clear();
-        HD44780_GotoXY(6,0);
-        HD44780_Puts((uint8_t *)"Mode: Monitor");
-        HD44780_GotoXY(0,1);
-        HD44780_Puts((uint8_t *)"Bad posture");
-        LCD_Written = false;
+        if (bad_posture_message == false)
+        { 
+          bad_posture_message = true;
+          HD44780_Clear();
+          HD44780_GotoXY(6,0);
+          HD44780_Puts((uint8_t *)"Mode: Monitor");
+          HD44780_GotoXY(0,1);
+          HD44780_Puts((uint8_t *)"Bad posture");
+          LCD_Written = false;
+        }
       }
     }
     switch (flextimus_prime.state) {
@@ -216,7 +222,7 @@ int main(void) {
 
 // Function to pause the alert system
 void flextimus_prime_pause_pressed() {
-  if (flextimus_prime.paused == false) { 
+  if (flextimus_prime.paused == false && flextimus_prime.configuring == false) { 
     
     HD44780_Clear();
     HD44780_GotoXY(6,0);
@@ -225,14 +231,14 @@ void flextimus_prime_pause_pressed() {
     HD44780_Puts((uint8_t *)"Peace and quiet");
     flextimus_prime.paused = true;
     gpio_on(PAUSE_LED);
-  } else { 
+  } else if (flextimus_prime.paused == true){ 
  
     /*HD44780_Clear();
     HD44780_GotoXY(6,0);
     HD44780_Puts((uint8_t *)"Mode: Monitor");
     HD44780_GotoXY(0,1);
-    HD44780_Puts((uint8_t *)"In Range");
-    flextimus_prime.paused = false;*/
+    HD44780_Puts((uint8_t *)"In Range");*/
+    flextimus_prime.paused = false;
     gpio_off(PAUSE_LED);
     LCD_Written = false;
   }
@@ -242,7 +248,7 @@ void flextimus_prime_pause_pressed() {
 void flextimus_prime_config_pressed() {
   adc_status_t adc_status;
 
-  if (flextimus_prime.configuring == false) {
+  if (flextimus_prime.configuring == false && flextimus_prime.paused == false) {
 
     HD44780_Clear();
     HD44780_GotoXY(6,0);
@@ -255,7 +261,7 @@ void flextimus_prime_config_pressed() {
     flextimus_prime.buzzer_timedout = false;
     flextimus_prime.configuring = true;
     gpio_on(CONFIG_LED);
-  } else { 
+  } else if (flextimus_prime.configuring == true) { 
     
    /* HD44780_Clear();
     HD44780_GotoXY(6,0);
