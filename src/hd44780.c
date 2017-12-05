@@ -114,7 +114,7 @@ void HD44780_PowerOn(void)
   HD44780_WriteInstruction(HD44780_FUNCTION_SET |
   		           HD44780_FUNCTION_SET_DL, false);
 
-  HD44780_WriteInstruction(HD44780_FUNCTION_SET, true);
+  HD44780_WriteInstruction(HD44780_FUNCTION_SET, false);
   
   // Function set
   //HD44780_WriteInstruction(HD44780_FUNCTION_SET |
@@ -131,7 +131,7 @@ void HD44780_PowerOn(void)
   HD44780_WriteInstruction(HD44780_DISPLAY_ONOFF_CONTROL |
                            HD44780_DISPLAY_ONOFF_CONTROL_D |
 			   HD44780_DISPLAY_ONOFF_CONTROL_C |
-			   HD44780_DISPLAY_ONOFF_CONTROL_B, true);
+			   HD44780_DISPLAY_ONOFF_CONTROL_B, false);
   // Entry mode set
   // Set the LCD unit to increment the address counter and shift the cursor to
   // the right after each data transaction. The display does not shift.  
@@ -149,7 +149,7 @@ void HD44780_PowerOn(void)
   */
 void HD44780_Clear(void)
 {
-  HD44780_WriteInstruction(HD44780_CLEAR_DISPLAY, true);
+  HD44780_WriteInstruction(HD44780_CLEAR_DISPLAY, false);
 }
 
 /**
@@ -161,7 +161,7 @@ void HD44780_Clear(void)
   */
 void HD44780_Home(void)
 {
-  HD44780_WriteInstruction(HD44780_RETURN_HOME, true);
+  HD44780_WriteInstruction(HD44780_RETURN_HOME, false);
 }
 
 /**
@@ -179,7 +179,7 @@ void HD44780_Home(void)
   */
 void HD44780_GotoXY(uint8_t x, uint8_t y)
 {
-  HD44780_WriteInstruction(HD44780_SET_DDRAM_ADDRESS + (y * 0x40) + x, true);
+  HD44780_WriteInstruction(HD44780_SET_DDRAM_ADDRESS + (y * 0x40) + x, false);
 }
 
 /**
@@ -384,7 +384,7 @@ uint8_t HD44780_ReadStatus(uint8_t bf_ac)
   */
 void HD44780_Putc(uint8_t c)
 {
-  HD44780_WriteData(c, true);
+  HD44780_WriteData(c, false);
 }
 
 /**
@@ -394,9 +394,11 @@ void HD44780_Putc(uint8_t c)
   */
 void HD44780_Puts(uint8_t *str)
 {
+  Delay(1000);
   while(*str)
   {
     HD44780_Putc(*str++);
+    Delay(1000);
   }
 }
 
