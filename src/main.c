@@ -151,8 +151,7 @@ int main(void) {
     /* If we are within range OR set to defaults OR timed out then turn off the
      * buzzer */
     if ((((flextimus_prime.adc.curr < flextimus_prime.adc.max) &&
-        (flextimus_prime.adc.curr > flextimus_prime.adc.min)) ||
-        flextimus_prime.buzzer_timedout == true)) {
+        (flextimus_prime.adc.curr > flextimus_prime.adc.min)))) {
       gpio_off(BUZZER);
       bad_posture_message = false;
       if (!LCD_Written)
@@ -169,9 +168,9 @@ int main(void) {
               (flextimus_prime.adc.curr < flextimus_prime.adc.min))  &&
               flextimus_prime.paused == false) && configured == true) {
       ++flextimus_prime.buzzer_timeout;
-      if (flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
-        flextimus_prime.buzzer_timedout = true;
-      }
+      //if (flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
+      //  flextimus_prime.buzzer_timedout = true;
+      //}
       if (flextimus_prime.paused == false &&
           flextimus_prime.buzzer_timedout == false) {
         gpio_on(BUZZER);
@@ -232,11 +231,11 @@ void flextimus_prime_pause_pressed() {
     gpio_on(PAUSE_LED);
   } else if (flextimus_prime.paused == true){ 
  
-    /*HD44780_Clear();
+    HD44780_Clear();
     HD44780_GotoXY(6,0);
     HD44780_Puts((uint8_t *)"Mode: Monitor");
     HD44780_GotoXY(0,1);
-    HD44780_Puts((uint8_t *)"In Range");*/
+    HD44780_Puts((uint8_t *)"In Range");
     flextimus_prime.paused = false;
     gpio_off(PAUSE_LED);
     LCD_Written = false;
