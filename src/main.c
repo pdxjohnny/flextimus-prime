@@ -90,6 +90,8 @@ void configure_gpios() {
 
 bool LCD_Written = false;
 bool bad_posture_message = false;
+bool configured = false;
+
 
 int main(void) {
   unsigned int curr;
@@ -111,18 +113,14 @@ int main(void) {
     assert_failed(__FILE__, __LINE__);
   }
 
-  //LCD Test code. NOTE: WILL HANG FOREVER IF YOU DON'T HAVE AN LCD ATTACHED
-  //TODO_MAX: Update documentation with physical set up. Replicate final schematic set up.
 
+  // Start displaying on the LCD.
   HD44780_Setup();
   HD44780_PowerOn();
   HD44780_Clear();
   HD44780_Puts((uint8_t *)"Mode: Standby");
-  //Delay(5000000);
   HD44780_GotoXY(0,1);
   HD44780_Puts((uint8_t *)"Please Configure");
-  //Delay(5000000);
-  //HD44780_Clear();
 
   gpio_off(BUZZER);
   gpio_off(PAUSE_LED);
@@ -152,9 +150,9 @@ int main(void) {
     }
     /* If we are within range OR set to defaults OR timed out then turn off the
      * buzzer */
-    if (((flextimus_prime.adc.curr < flextimus_prime.adc.max) &&
+    if ((((flextimus_prime.adc.curr < flextimus_prime.adc.max) &&
         (flextimus_prime.adc.curr > flextimus_prime.adc.min)) ||
-        flextimus_prime.buzzer_timedout == true) {
+        flextimus_prime.buzzer_timedout == true)) {
       gpio_off(BUZZER);
       bad_posture_message = false;
       if (!LCD_Written)
@@ -166,9 +164,10 @@ int main(void) {
         HD44780_Puts((uint8_t *)"In Range");
         LCD_Written = true;
       }
-    } else if (((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
+    // If we are out of range and have been configured, sound the annoying buzzer
+    } else if ((((flextimus_prime.adc.curr > flextimus_prime.adc.max) ||
               (flextimus_prime.adc.curr < flextimus_prime.adc.min))  &&
-              flextimus_prime.paused == false) {
+              flextimus_prime.paused == false) && configured == true) {
       ++flextimus_prime.buzzer_timeout;
       if (flextimus_prime.buzzer_timeout > BUZZER_TIMEOUT) {
         flextimus_prime.buzzer_timedout = true;
@@ -242,7 +241,7 @@ void flextimus_prime_pause_pressed() {
     gpio_off(PAUSE_LED);
     LCD_Written = false;
   }
-  Delay(100000);
+  Delay(200000);
 }
 
 void flextimus_prime_config_pressed() {
@@ -263,16 +262,12 @@ void flextimus_prime_config_pressed() {
     gpio_on(CONFIG_LED);
   } else if (flextimus_prime.configuring == true) { 
     
-   /* HD44780_Clear();
-    HD44780_GotoXY(6,0);
-    HD44780_Puts((uint8_t *)"Mode: Monitor");
-    HD44780_GotoXY(0,1);
-    HD44780_Puts((uint8_t *)"In Range");*/
     flextimus_prime.configuring = false;
     gpio_off(CONFIG_LED);
     LCD_Written = false;
+    configured = true;
   }
-  Delay(100000);
+  Delay(200000);
 }
 
 // IRQ handler for both button interrupts
