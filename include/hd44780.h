@@ -47,14 +47,14 @@
 // ----------------------------------------------------------------------------
 #define HD44780_GPIO_Port    (GPIOA)
 
-#define HD44780_GPIO_Pin_DB4 (GPIO_Pin_1)  /* PA1: Data bus line 4 */
-#define HD44780_GPIO_Pin_DB5 (GPIO_Pin_2)  /* PA2: Data bus line 5 */
-#define HD44780_GPIO_Pin_DB6 (GPIO_Pin_3)  /* PA3: Data bus line 6 */
-#define HD44780_GPIO_Pin_DB7 (GPIO_Pin_4)  /* PA4: Data bus line 7 */
+#define HD44780_GPIO_Pin_DB4 (GPIO_Pin_10)  /* PA1: Data bus line 4 */
+#define HD44780_GPIO_Pin_DB5 (GPIO_Pin_11)  /* PA2: Data bus line 5 */
+#define HD44780_GPIO_Pin_DB6 (GPIO_Pin_12)  /* PA3: Data bus line 6 */
+#define HD44780_GPIO_Pin_DB7 (GPIO_Pin_15)  /* PA4: Data bus line 7 */
 
-#define HD44780_GPIO_Pin_RS  (GPIO_Pin_5)  /* PA5: Register Select */
-#define HD44780_GPIO_Pin_RW  (GPIO_Pin_6)  /* PA6: Read/Write      */
-#define HD44780_GPIO_Pin_E   (GPIO_Pin_7)  /* PA7: Register Select */
+#define HD44780_GPIO_Pin_RS  (GPIO_Pin_3)  /* PA5: Register Select */
+#define HD44780_GPIO_Pin_RW  (GPIO_Pin_4)  /* PA6: Read/Write      */
+#define HD44780_GPIO_Pin_E   (GPIO_Pin_5)  /* PA7: Register Select */
 
 // Instruction Register overview
 #define HD44780_CLEAR_DISPLAY            ((uint8_t)(0x01))
